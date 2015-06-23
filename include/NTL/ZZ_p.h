@@ -32,8 +32,9 @@ public:
 
    // the following arrays are indexed 0..NumPrimes-1
    // q = FFTPrime[i]
-   Vec<wide_double> x;          // u/q, where u = (M/q)^{-1} mod q
+   Vec<double> x;     // u/q, where u = (M/q)^{-1} mod q
    Vec<long> u;            // u, as above
+   Vec<mulmod_precon_t> uqinv;
 };
 
 

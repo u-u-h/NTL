@@ -16,22 +16,22 @@
 #endif
 
 
-// some crossover points...choice depends
-// if we are using the gf2x lib or not
-
-#ifdef NTL_GF2X_LIB
-
-#define NTL_GF2X_GCD_CROSSOVER (400L*NTL_BITS_PER_LONG) 
-#define NTL_GF2X_HalfGCD_CROSSOVER (6L*NTL_BITS_PER_LONG)
-#define NTL_GF2X_BERMASS_CROSSOVER (200L*NTL_BITS_PER_LONG)
-
+// simple scaling factor for some crossover points:
+// we use a lower crossover of the underlying multiplication
+// is faster  
+#if (defined(NTL_GF2X_LIB) || defined(NTL_PCLMUL))
+#define XOVER_SCALE (1L)
 #else
-
-#define NTL_GF2X_GCD_CROSSOVER (900L*NTL_BITS_PER_LONG) 
-#define NTL_GF2X_HalfGCD_CROSSOVER (6L*NTL_BITS_PER_LONG)
-#define NTL_GF2X_BERMASS_CROSSOVER (450L*NTL_BITS_PER_LONG)
-
+#define XOVER_SCALE (2L)
 #endif
+
+
+
+#define NTL_GF2X_GCD_CROSSOVER (XOVER_SCALE*400L*NTL_BITS_PER_LONG) 
+#define NTL_GF2X_BERMASS_CROSSOVER (XOVER_SCALE*200L*NTL_BITS_PER_LONG)
+
+#define NTL_GF2X_HalfGCD_CROSSOVER (6L*NTL_BITS_PER_LONG)
+
 
 
 NTL_START_IMPL
@@ -467,18 +467,18 @@ void build(GF2XModulus& F, const GF2X& f)
 
    if (F.sn > 1 && deg_f0 < NTL_BITS_PER_LONG 
        && deg_f0 >= NTL_BITS_PER_LONG/2) {
-      if (F.size >= 6)
+      if (F.size >= 3*XOVER_SCALE)
          F.method = GF2X_MOD_MUL;
       else
          F.method = GF2X_MOD_SPECIAL;
    }
    else if (F.sn > 1 && deg_f0 < NTL_BITS_PER_LONG/2) {
-      if (F.size >= 4)
+      if (F.size >= 2*XOVER_SCALE)
          F.method = GF2X_MOD_MUL;
       else
          F.method = GF2X_MOD_SPECIAL;
    }
-   else if (F.size >= 8)
+   else if (F.size >= 4*XOVER_SCALE)
       F.method = GF2X_MOD_MUL;
    else 
       F.method = GF2X_MOD_PLAIN;
@@ -1947,7 +1947,7 @@ void UseMulDiv(GF2X& q, const GF2X& a, const GF2X& b)
 }
 
 
-const long GF2X_DIV_CROSS = 100; 
+const long GF2X_DIV_CROSS = 40*XOVER_SCALE; 
 
 void DivRem(GF2X& q, GF2X& r, const GF2X& a, const GF2X& b)
 {

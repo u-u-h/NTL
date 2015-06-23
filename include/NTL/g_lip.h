@@ -113,6 +113,9 @@ typedef _ntl_gbigint_is_opaque  _ntl_gbigint_body;
       /* *ww -= x*y */
 
 
+
+
+
 /********************************************************************
 
    Shifting and bit manipulation
@@ -536,6 +539,8 @@ long _ntl_gblock_storage(long d);
 #define NTL_zaddmul _ntl_gaddmul
 #define NTL_zssubmul _ntl_gssubmul
 #define NTL_zsubmul _ntl_gsubmul
+
+
 
 #define NTL_GMP_LIP
 

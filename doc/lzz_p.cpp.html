@@ -355,8 +355,8 @@ zz_pContext&amp; <font color="#b02f60"><b>operator</b></font>=(<font color="#008
 <font color="#008b00"><b>void</b></font>&nbsp;clear(zz_p&amp; x); <font color="#0000ed"><i>// x = 0</i></font><br>
 <font color="#008b00"><b>void</b></font>&nbsp;set(zz_p&amp; x); <font color="#0000ed"><i>// x = 1</i></font><br>
 <br>
-<font color="#008b00"><b>static</b></font>&nbsp;<font color="#008b00"><b>double</b></font>&nbsp;zz_p::ModulusInverse();<br>
-<font color="#0000ed"><i>// zz_p::ModulusInverse() returns 1.0/(double(zz_p::modulus())) </i></font><br>
+<font color="#008b00"><b>static</b></font>&nbsp;mulmod_t zz_p::ModulusInverse();<br>
+<font color="#0000ed"><i>// zz_p::ModulusInverse() returns PrepMulMod(zz_p::modulus()) </i></font><br>
 <br>
 <font color="#008b00"><b>static</b></font>&nbsp;zz_p zz_p::zero();<br>
 <font color="#0000ed"><i>// zz_p::zero() yields a read-only reference to zero</i></font><br>

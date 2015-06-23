@@ -21,6 +21,7 @@ zz_pInfoT::zz_pInfoT(long NewP, long maxroot)
    ZZ P, B, M, M1, MinusM;
    long n, i;
    long q, t;
+   mulmod_t qinv;
 
    p = NewP;
 
@@ -53,21 +54,26 @@ zz_pInfoT::zz_pInfoT(long NewP, long maxroot)
 
    negate(MinusM, M);
    MinusMModP = rem(MinusM, p);
+   MinusMModPpinv = PrepMulModPrecon(MinusMModP, p, pinv);
 
    CoeffModP.SetLength(n);
+   CoeffModPpinv.SetLength(n);
    x.SetLength(n);
    u.SetLength(n);
+   uqinv.SetLength(n);
 
    for (i = 0; i < n; i++) {
       q = GetFFTPrime(i);
+      qinv = GetFFTPrimeInv(i);
 
       div(M1, M, q);
       t = rem(M1, q);
       t = InvMod(t, q);
-      if (NTL_zz_p_QUICK_CRT) mul(M1, M1, t);
       CoeffModP[i] = rem(M1, p);
-      x[i] = ((wide_double) t)/((wide_double) q);
+      CoeffModPpinv[i] = PrepMulModPrecon(CoeffModP[i], p, pinv); 
+      x[i] = ((double) t)/((double) q);
       u[i] = t;
+      uqinv[i] = PrepMulModPrecon(t, q, qinv);
    }
 }
 

@@ -38,7 +38,8 @@ int main()
       GCD(c1, a, b);
       OldXGCD(c, ss, tt, a, b);
       XGCD(c1, ss1, tt1, a, b);
-      if (c1 != c || ss1 != ss || tt1 != tt) {
+      if (c1 != c || ss1 != ss || tt1 != tt ||
+          ss*a + tt*b != c) {
          cerr << "**** GF2XTest FAILED!\n";
          return 1;
       }

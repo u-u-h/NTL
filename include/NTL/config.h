@@ -149,6 +149,20 @@ using the configure script.
 #endif
 
 #if 0
+#define NTL_PCLMUL
+
+/* 
+ * Use this flag for faster GF2X arithmetc.  
+ * This enables the use of the PCLMUL instruction on x86-64
+ * machines. 
+ *
+ * To re-build after changing this flag:
+ *   rm GF2X.o; make ntl.a
+ */
+
+#endif
+
+#if 0
 #define NTL_LONG_LONG_TYPE long long
 
 /*
@@ -406,16 +420,11 @@ using the configure script.
 
 /*
  * Precomputed tables are used to store all the roots of unity
- * used in an FFT computation for the first NTL_FFT_BIGTAB_LIMIT
- * FFT primes (the latter is defined in FFT.h).  This can
- * lead to significant time savings but at the const of some space:
- * in the worst case, the precomputed tables will take of space
- * log_2(NTL_FFT_BUGTAB_LIMIT) * M, where M is roughly the maxmimum
- * space occupied by any one polynomial that was involved in an
- * FFT computation (this could be a polynomial over zz_p, ZZ_p, or ZZ).
+ * used in FFT computations. 
  *
  *   To re-build after changing this flag: rm *.o; make ntl.a
  */
+
 
 #endif
 
@@ -424,8 +433,8 @@ using the configure script.
 #define  NTL_FFT_LAZYMUL
 
 /*
- * This flag only has an effect when combined with the NTL_FFT_BIGTAB
- * flag, and either the NTL_SPMM_ULL or NTL_SPMM_ASM flags. 
+ * This flag only has an effect when combined with 
+ * either the NTL_SPMM_ULL or NTL_SPMM_ASM flags. 
  * When set, a "lazy multiplication" strategy due to David Harvey:
  * see his paper "FASTER ARITHMETIC FOR NUMBER-THEORETIC TRANSFORMS".
  *

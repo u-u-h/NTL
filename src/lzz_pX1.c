@@ -904,7 +904,7 @@ void InnerProduct(zz_pX& x, const vec_zz_p& v, long low, long high,
 
 
    long p = zz_p::modulus();
-   wide_double pinv = zz_p::ModulusInverse();
+   mulmod_t pinv = zz_p::ModulusInverse();
 
    high = min(high, v.length()-1);
    for (i = low; i <= high; i++) {

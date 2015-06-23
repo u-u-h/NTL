@@ -347,8 +347,8 @@ private:
 void clear(zz_p& x); // x = 0
 void set(zz_p& x); // x = 1
 
-static double zz_p::ModulusInverse();
-// zz_p::ModulusInverse() returns 1.0/(double(zz_p::modulus())) 
+static mulmod_t zz_p::ModulusInverse();
+// zz_p::ModulusInverse() returns PrepMulMod(zz_p::modulus()) 
 
 static zz_p zz_p::zero();
 // zz_p::zero() yields a read-only reference to zero

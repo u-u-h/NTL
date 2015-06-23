@@ -62,41 +62,6 @@ void print2k(FILE *f, long k, long bpl)
 }
 
 
-void print2k_WD(FILE *f, long k, long bpl)
-{
-   long m, l;
-   long first;
-
-   if (k <= 0) {
-      fprintf(f, "(wide_double(1L))");
-      return;
-   }
-
-   m = bpl - 2;
-   first = 1;
-
-   fprintf(f, "(");
-
-   while (k > 0) {
-      if (k > m)
-         l = m;
-      else
-         l = k;
-
-      k = k - l;
-
-
-      if (first)
-         first = 0;
-      else
-         fprintf(f, "*");
-
-      fprintf(f, "(wide_double(1L<<%ld))", l);
-   }
-
-   fprintf(f, ")");
-}
-
 
 void Error(const char *s)
 {
@@ -157,10 +122,6 @@ int main()
 
    printf("#define NTL_ZZ_FRADIX ");
    print2k(stdout, ntl_zz_nbits, bpl);
-   printf("\n");
-
-   printf("#define NTL_ZZ_WIDE_FRADIX ");
-   print2k_WD(stdout, ntl_zz_nbits, bpl);
    printf("\n");
 
    return 0;

@@ -3,6 +3,23 @@
 # use warnings;  # this doesn't work on older versions of perl
 
 
+sub RemoveProg {
+
+# This should work on unix and cygwin on windows
+
+   my ($name) = @_;
+
+   unlink($name);  unlink("$name.exe");
+
+}
+
+sub BadPCLMUL {
+   print "*\n*\nPCLMUL does not work on this system\n";
+   print "reconfiguring with NTL_PCLMUL=off...\n*\n*\n";
+   system("echo 'NTL_PCLMUL=off' > RETRY_CONFIG");
+   exit 1;
+}
+
 %MakeFlag = (
 
 'WIZARD'  => 'on',
@@ -53,6 +70,7 @@
 'NTL_EXCEPTIONS'        => 'off',
 'NTL_GMP_LIP'           => 'off',
 'NTL_GF2X_LIB'          => 'off',
+'NTL_PCLMUL'            => 'off',
 'NTL_X86_FIX'           => 'off',
 'NTL_NO_X86_FIX'        => 'off',
 'NTL_AVOID_FLOAT'       => 'off',
@@ -140,6 +158,14 @@ if ($ConfigFlag{'NTL_THREADS'} eq 'on' && !exists($Variable{'CXXFLAGS'})) {
 if ($ConfigFlag{'NTL_EXCEPTIONS'} eq 'on' && $ConfigFlag{'NTL_THREADS'} eq 'off' && !exists($Variable{'CXXFLAGS'})) {
    $MakeVal{'CXXFLAGS'} = $MakeVal{'CXXFLAGS'} . ' -std=c++11';
 }
+
+
+# special processing for NTL_PCLMUL: if set, add -mpclmul to CXXFLAGS
+
+if ($ConfigFlag{'NTL_PCLMUL'} eq 'on' && !exists($Variable{'CXXFLAGS'})) {
+   $MakeVal{'CXXFLAGS'} = $MakeVal{'CXXFLAGS'} . ' -mpclmul';
+}
+
 
 # some special MakeVal values that are determined by SHARED
 
@@ -339,6 +365,8 @@ while ($line = <CFILE>) {
 close(CFILE);
 close(CFILEOUT);
 
+print("CXXFLAGS=\"$MakeVal{'CXXFLAGS'}\"\n");
+
 if ($nowrite == 0) {
 
    print("writing makefile\n");
@@ -346,5 +374,14 @@ if ($nowrite == 0) {
 
    print("writing ../include/NTL/config.h\n");
    system("cp cfileout ../include/NTL/config.h");
+
+   if ($ConfigFlag{'NTL_PCLMUL'} eq 'on') {
+      print "*\n*\nNTL_PCLMUL=on => checking system compatibility...\n\n";
+      RemoveProg("CheckPCLMUL");
+      system("make CheckPCLMUL") and BadPCLMUL();
+      system("./CheckPCLMUL") and BadPCLMUL();
+      print "*\n*\nPCLMUL works on this system\n";
+   }
+
 }
 

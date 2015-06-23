@@ -85,30 +85,6 @@ void BlockDestroy(ZZ_p* x, long n)
 }
 
 
-void conv(vec_ZZ_p& x, const vec_ZZ& a)
-{
-   long i, n;
-
-   n = a.length();
-   x.SetLength(n);
-
-   ZZ_p* xp = x.elts();
-   const ZZ* ap = a.elts();
-
-   for (i = 0; i < n; i++)
-      conv(xp[i], ap[i]);
-}
-
-void conv(vec_ZZ& x, const vec_ZZ_p& a)
-{
-   long n = a.length();
-   x.SetLength(n);
-   long i;
-   for (i = 0; i < n; i++)
-      x[i] = rep(a[i]);
-}
-
-
 
 void InnerProduct(ZZ_p& x, const vec_ZZ_p& a, const vec_ZZ_p& b)
 {

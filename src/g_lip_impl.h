@@ -2217,14 +2217,14 @@ gxxeucl(
    long got12;
    long got21;
    long got22;
-   wide_double hi;
-   wide_double lo;
-   wide_double dt;
-   wide_double fhi, fhi1;
-   wide_double flo, flo1;
-   wide_double num;
-   wide_double den;
-   wide_double dirt;
+   double hi;
+   double lo;
+   double dt;
+   double fhi, fhi1;
+   double flo, flo1;
+   double num;
+   double den;
+   double dirt;
 
    _ntl_gsetlength(&a, (e = (SIZE(ain) > SIZE(nin) ? SIZE(ain) : SIZE(nin))));
    _ntl_gsetlength(&n, e);
@@ -2238,11 +2238,11 @@ gxxeucl(
    _ntl_gsetlength(&u, e);
    *uu = u;
 
-   fhi1 = wide_double(1L) + wide_double(32L)/NTL_WIDE_FDOUBLE_PRECISION;
-   flo1 = wide_double(1L) - wide_double(32L)/NTL_WIDE_FDOUBLE_PRECISION;
+   fhi1 = double(1L) + double(32L)/NTL_FDOUBLE_PRECISION;
+   flo1 = double(1L) - double(32L)/NTL_FDOUBLE_PRECISION;
 
-   fhi = wide_double(1L) + wide_double(8L)/NTL_WIDE_FDOUBLE_PRECISION;
-   flo = wide_double(1L) - wide_double(8L)/NTL_WIDE_FDOUBLE_PRECISION;
+   fhi = double(1L) + double(8L)/NTL_FDOUBLE_PRECISION;
+   flo = double(1L) - double(8L)/NTL_FDOUBLE_PRECISION;
 
    _ntl_gcopy(ain, &a);
    _ntl_gcopy(nin, &n);
@@ -2260,28 +2260,28 @@ gxxeucl(
       {
          sa = SIZE(a);
          p = DATA(a) + (sa-1);
-         num = wide_double(*p) * NTL_ZZ_WIDE_FRADIX;
+         num = double(*p) * NTL_ZZ_FRADIX;
          if (sa > 1)
-            num += wide_double(*(--p));
-         num *= NTL_ZZ_WIDE_FRADIX;
+            num += double(*(--p));
+         num *= NTL_ZZ_FRADIX;
          if (sa > 2)
-            num += wide_double(*(p - 1));
+            num += double(*(p - 1));
 
          sn = SIZE(n);
          p = DATA(n) + (sn-1);
-         den = wide_double(*p) * NTL_ZZ_WIDE_FRADIX;
+         den = double(*p) * NTL_ZZ_FRADIX;
          if (sn > 1)
-            den += wide_double(*(--p));
-         den *= NTL_ZZ_WIDE_FRADIX;
+            den += double(*(--p));
+         den *= NTL_ZZ_FRADIX;
          if (sn > 2)
-            den += wide_double(*(p - 1));
+            den += double(*(p - 1));
 
-         hi = fhi1 * (num + wide_double(1L)) / den;
-         lo = flo1 * num / (den + wide_double(1L));
+         hi = fhi1 * (num + double(1L)) / den;
+         lo = flo1 * num / (den + double(1L));
          if (diff > 0)
          {
-            hi *= NTL_ZZ_WIDE_FRADIX;
-            lo *= NTL_ZZ_WIDE_FRADIX;
+            hi *= NTL_ZZ_FRADIX;
+            lo *= NTL_ZZ_FRADIX;
          }
          try11 = 1;
          try12 = 0;
@@ -2292,22 +2292,22 @@ gxxeucl(
          while (fast > 0)
          {
             parity = 1 - parity;
-            if (hi >= NTL_SP_BOUND)
+            if (hi >= NTL_NSP_BOUND)
                fast = 0;
             else
             {
                ilo = (long)lo;
-               dirt = hi - wide_double(ilo);
-               if (dirt < 1.0/NTL_WIDE_FDOUBLE_PRECISION || !ilo || ilo < (long)hi)
+               dirt = hi - double(ilo);
+               if (dirt < 1.0/NTL_FDOUBLE_PRECISION || !ilo || ilo < (long)hi)
                   fast = 0;
                else
                {
-                  dt = lo-wide_double(ilo);
+                  dt = lo-double(ilo);
                   lo = flo / dirt;
-                  if (dt > 1.0/NTL_WIDE_FDOUBLE_PRECISION)
+                  if (dt > 1.0/NTL_FDOUBLE_PRECISION)
                      hi = fhi / dt;
                   else
-                     hi = wide_double(NTL_SP_BOUND);
+                     hi = double(NTL_NSP_BOUND);
                   temp = try11;
                   try11 = try21;
                   if ((NTL_WSP_BOUND - temp) / ilo < try21)
@@ -3061,14 +3061,14 @@ _ntl_gxxratrecon(
    long got21;
    long got22;
 
-   wide_double hi;
-   wide_double lo;
-   wide_double dt;
-   wide_double fhi, fhi1;
-   wide_double flo, flo1;
-   wide_double num;
-   wide_double den;
-   wide_double dirt;
+   double hi;
+   double lo;
+   double dt;
+   double fhi, fhi1;
+   double flo, flo1;
+   double num;
+   double den;
+   double dirt;
 
    if (_ntl_gsign(num_bound) < 0)
       LogicError("rational reconstruction: bad numerator bound");
@@ -3106,11 +3106,11 @@ _ntl_gxxratrecon(
    _ntl_gsetlength(&inv_bak, e);
    _ntl_gsetlength(&w_bak, e);
 
-   fhi1 = wide_double(1L) + wide_double(32L)/NTL_WIDE_FDOUBLE_PRECISION;
-   flo1 = wide_double(1L) - wide_double(32L)/NTL_WIDE_FDOUBLE_PRECISION;
+   fhi1 = double(1L) + double(32L)/NTL_FDOUBLE_PRECISION;
+   flo1 = double(1L) - double(32L)/NTL_FDOUBLE_PRECISION;
 
-   fhi = wide_double(1L) + wide_double(8L)/NTL_WIDE_FDOUBLE_PRECISION;
-   flo = wide_double(1L) - wide_double(8L)/NTL_WIDE_FDOUBLE_PRECISION;
+   fhi = double(1L) + double(8L)/NTL_FDOUBLE_PRECISION;
+   flo = double(1L) - double(8L)/NTL_FDOUBLE_PRECISION;
 
    _ntl_gcopy(ain, &a);
    _ntl_gcopy(nin, &n);
@@ -3136,28 +3136,28 @@ _ntl_gxxratrecon(
       {
          sa = SIZE(a);
          p = DATA(a) + (sa-1);
-         num = wide_double(*p) * NTL_ZZ_WIDE_FRADIX;
+         num = double(*p) * NTL_ZZ_FRADIX;
          if (sa > 1)
-            num += wide_double(*(--p));
-         num *= NTL_ZZ_WIDE_FRADIX;
+            num += double(*(--p));
+         num *= NTL_ZZ_FRADIX;
          if (sa > 2)
-            num += wide_double(*(p - 1));
+            num += double(*(p - 1));
 
          sn = SIZE(n);
          p = DATA(n) + (sn-1);
-         den = wide_double(*p) * NTL_ZZ_WIDE_FRADIX;
+         den = double(*p) * NTL_ZZ_FRADIX;
          if (sn > 1)
-            den += wide_double(*(--p));
-         den *= NTL_ZZ_WIDE_FRADIX;
+            den += double(*(--p));
+         den *= NTL_ZZ_FRADIX;
          if (sn > 2)
-            den += wide_double(*(p - 1));
+            den += double(*(p - 1));
 
-         hi = fhi1 * (num + wide_double(1L)) / den;
-         lo = flo1 * num / (den + wide_double(1L));
+         hi = fhi1 * (num + double(1L)) / den;
+         lo = flo1 * num / (den + double(1L));
          if (diff > 0)
          {
-            hi *= NTL_ZZ_WIDE_FRADIX;
-            lo *= NTL_ZZ_WIDE_FRADIX;
+            hi *= NTL_ZZ_FRADIX;
+            lo *= NTL_ZZ_FRADIX;
          }
 
          try11 = 1;
@@ -3169,22 +3169,22 @@ _ntl_gxxratrecon(
          while (fast > 0)
          {
             parity = 1 - parity;
-            if (hi >= NTL_SP_BOUND)
+            if (hi >= NTL_NSP_BOUND)
                fast = 0;
             else
             {
                ilo = (long)lo;
-               dirt = hi - wide_double(ilo);
-               if (dirt < 1.0/NTL_WIDE_FDOUBLE_PRECISION || !ilo || ilo < (long)hi)
+               dirt = hi - double(ilo);
+               if (dirt < 1.0/NTL_FDOUBLE_PRECISION || !ilo || ilo < (long)hi)
                   fast = 0;
                else
                {
-                  dt = lo-wide_double(ilo);
+                  dt = lo-double(ilo);
                   lo = flo / dirt;
-                  if (dt > 1.0/NTL_WIDE_FDOUBLE_PRECISION)
+                  if (dt > 1.0/NTL_FDOUBLE_PRECISION)
                      hi = fhi / dt;
                   else
-                     hi = wide_double(NTL_SP_BOUND);
+                     hi = double(NTL_NSP_BOUND);
                   temp = try11;
                   try11 = try21;
                   if ((NTL_WSP_BOUND - temp) / ilo < try21)
@@ -3266,31 +3266,31 @@ _ntl_gxxratrecon(
       {
          sa = SIZE(a);
          p = DATA(a) + (sa-1);
-         num = wide_double(*p) * NTL_ZZ_WIDE_FRADIX;
+         num = double(*p) * NTL_ZZ_FRADIX;
          if (sa > 1)
-            num += wide_double(*(--p));
-         num *= NTL_ZZ_WIDE_FRADIX;
+            num += double(*(--p));
+         num *= NTL_ZZ_FRADIX;
          if (sa > 2)
-            num += wide_double(*(p - 1));
+            num += double(*(p - 1));
 
          sn = SIZE(n);
          p = DATA(n) + (sn-1);
-         den = wide_double(*p) * NTL_ZZ_WIDE_FRADIX;
+         den = double(*p) * NTL_ZZ_FRADIX;
          if (sn > 1)
-            den += wide_double(*(--p));
-         den *= NTL_ZZ_WIDE_FRADIX;
+            den += double(*(--p));
+         den *= NTL_ZZ_FRADIX;
          if (sn > 2)
-            den += wide_double(*(p - 1));
+            den += double(*(p - 1));
 
-         hi = fhi1 * (num + wide_double(1L)) / den;
-         lo = flo1 * num / (den + wide_double(1L));
+         hi = fhi1 * (num + double(1L)) / den;
+         lo = flo1 * num / (den + double(1L));
          if (diff > 0)
          {
-            hi *= NTL_ZZ_WIDE_FRADIX;
-            lo *= NTL_ZZ_WIDE_FRADIX;
+            hi *= NTL_ZZ_FRADIX;
+            lo *= NTL_ZZ_FRADIX;
          }
 
-         if (hi < NTL_SP_BOUND)
+         if (hi < NTL_NSP_BOUND)
          {
             ilo = (long)lo;
             if (ilo == (long)hi)
@@ -4550,7 +4550,7 @@ public:
    UniqueArray<long> len_vec;
    UniqueArray<mp_limb_t> inv_vec;
    UniqueArray<long> corr_vec;
-   UniqueArray<wide_double> corraux_vec;
+   UniqueArray<mulmod_precon_t> corraux_vec;
    UniqueArray<_ntl_gbigint_wrapped> prod_vec;
 
    void eval(long *x, _ntl_gbigint a, _ntl_tmp_vec *tmp_vec);
@@ -4578,9 +4578,9 @@ public:
 
 _ntl_rem_struct *_ntl_rem_struct_build(long n, _ntl_gbigint modulus, long (*p)(long))
 {
-#ifdef NTL_TBL_REM
 
-   if (n <= 800 
+#ifdef NTL_TBL_REM
+   if (n <= 800
           && sizeof(NTL_ULL_TYPE) == 2*sizeof(long) 
           && NTL_ZZ_NBITS == NTL_BITS_PER_LONG
           && SIZE(modulus) >= 4) { 
@@ -4633,9 +4633,10 @@ _ntl_rem_struct *_ntl_rem_struct_build(long n, _ntl_gbigint modulus, long (*p)(l
       long levels, vec_len;
       UniqueArray<long> index_vec;
       UniqueArray<long> len_vec, corr_vec;
-      UniqueArray<wide_double> corraux_vec;
+      UniqueArray<mulmod_precon_t> corraux_vec;
       UniqueArray<mp_limb_t> inv_vec;
       UniqueArray<_ntl_gbigint_wrapped> prod_vec;
+
    
       q.SetLength(n);
       for (i = 0; i < n; i++)
@@ -4703,7 +4704,7 @@ _ntl_rem_struct *_ntl_rem_struct_build(long n, _ntl_gbigint modulus, long (*p)(l
       for (i = (1L << (levels-1)) - 1; i < vec_len; i++) {
          for (j = index_vec[i]; j < index_vec[i+1]; j++) {
             corr_vec[j] = SpecialPower(len_vec[1] - len_vec[i], q[j]);
-            corraux_vec[j] = ((wide_double) corr_vec[j])/((wide_double) q[j]);
+            corraux_vec[j] = PrepMulModPrecon(corr_vec[j], q[j]);
          }
       }
 
@@ -5057,7 +5058,7 @@ void _ntl_rem_struct_medium::eval(long *x, _ntl_gbigint a,
       else {
          for (j = lo; j < hi; j++) {
             long t = mpn_mod_1(s1p, s1size, q[j]);
-            x[j] = MulMod2_legacy(t, corr_vec[j], q[j], corraux_vec[j]);
+            x[j] = MulModPrecon(t, corr_vec[j], q[j], corraux_vec[j]);
          }
       }
    }

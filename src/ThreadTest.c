@@ -28,7 +28,7 @@ int main()
 {
    long NumContexts = 3;
    long NumPolys = 6;
-   long n = 250;
+   long n = 500;
 
    Vec<ZZ_pContext> context_vec;
    context_vec.SetLength(NumContexts);

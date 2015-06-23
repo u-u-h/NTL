@@ -7,7 +7,6 @@
 #include <NTL/SmartPtr.h>
 #include <NTL/vector.h>
 
-#define NTL_zz_p_QUICK_CRT (NTL_WIDE_DOUBLE_PRECISION - NTL_SP_NBITS > 12)
 
 
 
@@ -25,10 +24,10 @@ public:
    zz_pInfoT(INIT_USER_FFT_TYPE, long q);
 
    long p;
-   wide_double pinv;
+   mulmod_t pinv;
 
    FFTPrimeInfo* p_info; // non-null means we are directly using 
-                        // an FFT prime
+                         // an FFT prime
 
    UniquePtr<FFTPrimeInfo> p_info_owner;
    // for user-defined FFT primes, we store the corresponding
@@ -43,15 +42,18 @@ public:
    long MaxRoot;
 
    long MinusMModP;  //  -M mod p, M = product of primes
+   mulmod_precon_t MinusMModPpinv;
 
    // the following arrays are indexed 0..NumPrimes-1
    // q = FFTPrime[i]
 
 
    Vec<long> CoeffModP;    // coeff mod p
+   Vec<mulmod_precon_t> CoeffModPpinv; 
 
-   Vec<wide_double> x;          // u/q, where u = (M/q)^{-1} mod q
-   Vec<long> u;            // u, as above
+   Vec<double> x;               // u/q, where u = (M/q)^{-1} mod q
+   Vec<long> u;                 // u, as above
+   Vec<mulmod_precon_t> uqinv;  // MulModPrecon for u
 };
 
 NTL_THREAD_LOCAL extern SmartPtr<zz_pInfoT> zz_pInfo;  // current modulus, initially null
@@ -165,7 +167,7 @@ long& LoopHole() { return _zz_p__rep; }
 
 static long modulus() { return zz_pInfo->p; }
 static zz_p zero() { return zz_p(); }
-static wide_double ModulusInverse() { return zz_pInfo->pinv; }
+static mulmod_t ModulusInverse() { return zz_pInfo->pinv; }
 static long PrimeCnt() { return zz_pInfo->PrimeCnt; }
 
 
@@ -397,6 +399,12 @@ inline zz_p random_zz_p()
 NTL_SNS ostream& operator<<(NTL_SNS ostream& s, zz_p a);
    
 NTL_SNS istream& operator>>(NTL_SNS istream& s, zz_p& x);
+
+
+void conv(Vec<zz_p>& x, const Vec<ZZ>& a);
+// explicit instantiation of more efficient version,
+// defined in vec_lzz_p.c
+
 
 
 /* additional legacy conversions for v6 conversion regime */

@@ -16,11 +16,70 @@ A Tour of NTL: Summary of Changes
 </p>
 </h1>
 
+<p><hr><p>
+<h3>
+2015.5.2:
+Changes between NTL 9.0.2 and 9.1.0
+</h3>
+
+<ul>
+<li>
+Added a new configuration switch to enable 
+the <tt>PCLMUL</tt> instruction on x86 machines.
+This can speed up <tt>GF2X</tt> arithmetic significantly
+(by a factor of 4).
+This is enabled by configuring with <tt>NTL_PCLMUL=on</tt>
+(and the configuration 
+script automatically checks if it actually works on your platform).
+<p>
+Note that this is an alternative to building NTL against the <tt>gf2x</tt>
+library (the latter is currently not thread or exception safe).
+<p>
+
+
+<li>
+Performance improvements to <tt>zz_pX</tt> and <tt>Vec&lt;zz_p&gt;</tt>.
+<p>
+
+<li>
+Performance improvements to <tt>ZZX</tt>:
+implemented asymptotically fast CRT code
+for <tt>HomMul</tt> and  more cache-friendly logic.
+This routine is used for polynomials whose degree is
+significantly larger than the bit-length of its coefficients.
+This should make NTL's <tt>ZZX</tt> multiplication faster
+across a broader range of parameters,
+and at least be within a (hopefully not-too-large) constant factor
+of optimal.
+<p>
+
+<li>
+Some internal cleaning on the small-prime FFT code.
+I've made David Harvey's lazy butterfly routine without
+precomputed tables more competitive with the large-table
+variant, 
+so now that large tables
+are used for a smaller range of parameters (this should reduce
+the overall memory footprint).
+<p>
+
+<li>
+Laid the groundwork for some future changes;
+namely, to allow 60-bit
+modular arithmetic without relying on the esoteric x87 fmul
+instruction.
+This should be coming soon (probably v9.2).
+<p>
+
+
+</ul>
+
+
 
 <p><hr><p>
 <h3>
 2015.3.29:
-Changed between NTL 9.0.1 and 9.0.2
+Changes between NTL 9.0.1 and 9.0.2
 </h3>
 
 <ul>
@@ -38,7 +97,7 @@ arg becomes somewhat less essential).
 <p><hr><p>
 <h3>
 2015.3.27:
-Changed between NTL 9.0.0 and 9.0.1
+Changes between NTL 9.0.0 and 9.0.1
 </h3>
 
 <ul>
@@ -50,7 +109,7 @@ Fixed a small bug that prevented compilation a certain platforms.
 <p><hr><p>
 <h3>
 2015.3.27:
-Changed between NTL 8.1.2 and 9.0.0
+Changes between NTL 8.1.2 and 9.0.0
 </h3>
 
 <ul>
@@ -122,7 +181,7 @@ For details, look <a href="xdouble.cpp.html">here</a>.
 <p><hr><p>
 <h3>
 2015.1.31:
-Changed between NTL 8.1.1 and 8.1.2
+Changes between NTL 8.1.1 and 8.1.2
 </h3>
 
 <ul>
@@ -136,7 +195,7 @@ function in a multi-threaded execution.
 <p><hr><p>
 <h3>
 2015.1.30:
-Changed between NTL 8.1 and 8.1.1
+Changes between NTL 8.1 and 8.1.1
 </h3>
 
 <ul>
@@ -154,7 +213,7 @@ in the <tt>makefile</tt> to keep <tt>libtool</tt> happy.
 <p><hr><p>
 <h3>
 2015.1.9:
-Changed between NTL 8.0 and 8.1
+Changes between NTL 8.0 and 8.1
 </h3>
 
 <ul>
@@ -181,7 +240,7 @@ Hopefully, this goal has now been reached.
 <p><hr><p>
 <h3>
 2014.12.24:
-Changed between NTL 7.0.2 and 8.0
+Changes between NTL 7.0.2 and 8.0
 </h3>
 
 <ul>
@@ -1021,7 +1080,7 @@ come without any annoyingly excessive access control restrictions.
 <p>
 
 <li>
-Changed the version numbering scheme so that it is now closer to
+Changes the version numbering scheme so that it is now closer to
 "standard practice".
 This is version "5.2".
 Any small bug fixes to this version will be named "5.2.1", "5.2.2", etc.
@@ -1536,7 +1595,7 @@ This version is backward compatible with 3.5a.
 A few small bug fixes and performance enhancements.
 
 <li>
-Changes to the <tt>ZZX</tt> factoring routines that in some
+Changed to the <tt>ZZX</tt> factoring routines that in some
 cases yield dramatic performance improvements
 (<a href="tour-time.html">more details</a>).
 

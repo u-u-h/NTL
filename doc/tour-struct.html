@@ -20,6 +20,13 @@ A Tour of NTL: Programming Interface
 
 In this section, we give a general overview of the 
 NTL's programming interface.
+The following section has links to detailed documentation on 
+each and every class and function.
+<p>
+<i>Note that only those classes and functions documented
+in these pages are a part of the "official API":
+all other interfaces are subject to change without notice.
+</i>
 
 <p>
 <p>
@@ -1256,7 +1263,7 @@ error handling.
 Note that NTL only uses low-level GMP routines (the <tt>mpn</tt>-level
 routines),
 and these routines should only abort if they cannot allocate space
-for temporary big integers.
+for temporary big integers within GMP itself.
 So this should only be an issue of you are working with some
 very large integers.
 The GMP developers are working on improving their error handling.
@@ -1269,8 +1276,6 @@ and build NTL <i>without</i> GMP.
 <b>Issues with gf2x:</b>
 Similar comments apply to NTL builds that use the <tt>gf2x</tt>
 library.
-I have no idea how they handle errors.
-If you really need proper error handling, you should not use <tt>gf2x</tt>.
 
 
 <p>

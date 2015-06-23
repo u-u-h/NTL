@@ -1783,7 +1783,10 @@ void ran_bytes(unsigned char *bytes, long n)
    if (!ran_initialized) {
       ZZ x;
       const string& id = UniqueID();
+
       ZZFromBytes(x, (const unsigned char *) id.c_str(), id.length());
+      // DIRT: slightly dirty cast from char * to unsigned char *,
+
       SetSeed(x);
    }
    arc4(bytes, n, &ran_key);

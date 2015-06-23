@@ -349,6 +349,14 @@ I have not been able to do so on any current Mac OSX system:
 in fact, no compiler on current Mac systems (gcc or clang)
 yet have proper support for <tt>thread_local</tt> storage.
 </i>
+
+<p>
+<li>
+NTL remains thread safe when built with GMP.
+however, the current version (v1.1) of the external gf2x
+library is not thread safe.
+Therefore, <b>you should build NTL using gf2x if you need a thread-safe
+build</b>.
 </ul>
 
 To obtain thread safety, I used the following strategies:

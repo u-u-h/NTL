@@ -6,7 +6,7 @@
 #include <NTL/vector.h>
 #include <NTL/GF2E.h>
 #include <NTL/vec_GF2E.h>
-#include <NTL/FFT.h>
+#include <NTL/vec_long.h>
 #include <NTL/GF2XVec.h>
 #include <NTL/Lazy.h>
 

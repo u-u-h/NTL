@@ -491,6 +491,7 @@ MulSubFrom(ZZ& x, const ZZ& a, const ZZ& b)
 }
 
 
+
 // Special routines for implementing CRT in ZZ_pX arithmetic
 // These are verbose, but fairly boilerplate
 
@@ -1332,33 +1333,6 @@ long InvMod(long a, long n);
 
 long PowerMod(long a, long e, long n);
 // computes a^e mod n, e >= 0
-
-
-inline
-void VectorMulModPrecon(long k, long *x, const long *a, long b, long n, 
-                        mulmod_precon_t bninv)
-{
-   for (long i = 0; i < k; i++)
-      x[i] = MulModPrecon(a[i], b, n, bninv);
-}
-
-inline
-void VectorMulMod(long k, long *x, const long *a, long b, long n, 
-                  wide_double ninv)
-{
-   mulmod_precon_t bninv;
-   bninv = PrepMulModPrecon(b, n, ninv);
-   VectorMulModPrecon(k, x, a, b, n, bninv);
-}
-
-
-inline 
-void VectorMulMod(long k, long *x, const long *a, long b, long n)
-{
-   wide_double ninv = PrepMulMod(n);
-   VectorMulMod(k, x, a, b, n, ninv);
-}
-
 
 
 // Error handling

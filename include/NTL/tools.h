@@ -125,7 +125,7 @@ NTL_OPEN_NNS
 
 
 
-#define NTL_FILE_THRESH (64000.0)
+#define NTL_FILE_THRESH (128000.0)
 // threshold in KB for switching to external storage of certain
 // tables (currently in the DDF polynomial factoring routines)
 

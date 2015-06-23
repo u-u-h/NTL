@@ -168,6 +168,11 @@ int main()
 #endif
 
 
+#ifdef NTL_PCLMUL
+   cerr << "NTL_PCLMUL\n";
+#endif
+
+
 #ifdef NTL_LONG_LONG_TYPE
    cerr << "NTL_LONG_LONG_TYPE: ";
    cerr << make_string(NTL_LONG_LONG_TYPE) << "\n";
@@ -290,7 +295,7 @@ cerr << "Performance Options:\n";
    ZZ p;
 
 
-   for (i = 0; i < 14; i++) {
+   for (i = 0; i < 15; i++) {
       // cerr << n << "/" << k; 
       cerr << ".";
       RandomLen(p, k);

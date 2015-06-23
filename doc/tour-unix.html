@@ -90,7 +90,14 @@ otherwise, if <tt>gf2x</tt> is installed, say, in <tt>$HOME/sw</tt>,
 then you also need to pass the option <tt>GF2X_PREFIX=$HOME/sw</tt>.
 <a href="tour-gf2x.html">This page</a> provides more details.
 
-
+<p>
+Even if you don't want to experiment with the <tt>gf2x</tt>
+library, you might want to try setting <tt>NTL_PCLMUL=on</tt>,
+which will enable the use special hardware support for fast
+polynomial arithmetic over <i>GF(2)</i> on platforms that support it
+(the configure script will check that it actually works).
+You can set <tt>NTL_PCLMUL=on</tt> even if you also set
+<tt>NTL_GF2X_LIB=on</tt>, but it probably won't help much.
 
 
 <p>
@@ -188,8 +195,11 @@ NTL_GMP_LIP=off      # Switch to enable the use of GMP as primary
 
 GMP_PREFIX=$(DEF_PREFIX) # Directory in which GMP components are installed
 
+NTL_PCLMUL=off       # switch to enable PCLMUL instruction for
+                     #   faster arithmetic in GF(2)[X]
+
 NTL_GF2X_LIB=off     # Switch to enable the use of the gf2x package
-                     #   for faster arithmetic over GF(2)[X]
+                     #   for faster arithmetic GF(2)[X]
 
 GF2X_PREFIX=$(DEF_PREFIX) # Directory in which gf2x components are installed
 
@@ -225,6 +235,15 @@ compiling <tt>C</tt> and <tt>C++</tt>, run:
    % ./configure "CXXFLAGS=-g -O"
 </pre>
 Note the use of quotes to keep the argument in one piece.
+Also note that the configuration script will sometimes
+automatically adjust <tt>CXXFLAGS</tt>, depending on 
+other configuration flags that are set
+(specifically, the <tt>NTL_PCLMUL</tt>, <tt>NTL_THREADS</tt>,
+and <tt>NTL_EXCEPTIONS</tt> flags).
+However, these automatic adjustments <i>will not</i>
+be done if you explicitly set <tt>CXXFLAGS</tt> yourself:
+you are on your own, then.
+
 
 <p>
 <li>
@@ -277,7 +296,7 @@ description.
 <p>
 Note that all of these configuration options can also be set
 by editing the two files <tt>makefile</tt>
-and <tt>../include/NTL/def_config.h</tt> by hand.
+and <tt>../include/NTL/config.h</tt> by hand.
 These files are fairly simple and well documented, and so this is not
 too hard to do.
 
@@ -332,6 +351,11 @@ on your platform.
 It tries different routines in the files <tt>GetTime1.c</tt>,
 <tt>GetTime2.c</tt>, etc., and when it finds a good one,
 it copies the file into <tt>GetTime.c</tt>.
+A similar script is run to "automagically"
+determine if there is something like a <tt>getpid</tt>
+function available on your platform.
+
+
 
 <p>
 <li>
@@ -356,8 +380,9 @@ will be in
 effect while the wizard runs, and will be retained in the updated
 <tt>config.h</tt> file, with the exception of the flags
 <pre>
-   NTL_LONG_LONG NTL_AVOID_FLOAT NTL_TBL_REM NTL_AVOID_BRANCHING 
+   NTL_LONG_LONG NTL_AVOID_FLOAT NTL_TBL_REM NTL_TBL_REM_LL NTL_AVOID_BRANCHING 
    NTL_SPMM_UL NTL_SPMM_ULL NTL_SPMM_ASM NTL_GF2X_NOINLINE NTL_GF2X_ALTCODE
+   NTL_GF2X_ALTCODE1 NTL_FFT_LAZYMUL NTL_FFT_BIGTAB
 </pre>
 which are set by the wizard. 
 Also note that if you <i>do not</i> want the wizard to run,

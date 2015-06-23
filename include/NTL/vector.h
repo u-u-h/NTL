@@ -784,8 +784,11 @@ void conv(Vec<T>& x, const Vec<S>& a)
 {
    long n = a.length();
    x.SetLength(n);
+   T *xp = x.elts();
+   const S *ap = a.elts();
+
    for (long i = 0; i < n; i++)
-      conv(x[i], a[i]);
+      conv(xp[i], ap[i]);
 }
 
 

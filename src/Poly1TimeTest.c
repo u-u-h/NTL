@@ -40,6 +40,9 @@ double clean_data(double *t)
 void print_flag()
 {
 
+#if defined(NTL_FFT_LAZYMUL)
+printf("FFT_LAZYMUL ");
+#endif
 
 #if defined(NTL_SPMM_UL)
 printf("SPMM_UL ");
@@ -47,8 +50,6 @@ printf("SPMM_UL ");
 printf("SPMM_ULL ");
 #elif defined(NTL_SPMM_ASM)
 printf("SPMM_ASM ");
-#else
-printf("DEFAULT ");
 #endif
 
 #if defined(NTL_AVOID_BRANCHING)
@@ -58,11 +59,6 @@ printf("AVOID_BRANCHING ");
 #if defined(NTL_FFT_BIGTAB)
 printf("FFT_BIGTAB ");
 #endif
-
-#if defined(NTL_FFT_LAZYMUL)
-printf("FFT_LAZYMUL ");
-#endif
-
 
 printf("\n");
 
@@ -134,8 +130,8 @@ int main()
    long i;
    long iter;
 
-   const int nprimes = 10;
-   const long L = 13;
+   const int nprimes = 30;
+   const long L = 12; 
    const long N = 1L << L;
    long r;
    

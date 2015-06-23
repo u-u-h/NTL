@@ -1,4 +1,7 @@
 
+
+============================
+
 FIXME: maybe it would make more sense to take the +1/-1 logic
 out of [cg]_lip_impl block_construct routines and just put it in
 the caller: the ZZ_p and ZZVec BlockConstruct stuff: add 1 there...
@@ -10,8 +13,6 @@ with STL vectors.
 
 
 TODO list:
-     * speed up ZZX mul: faster HomMul and faster SSMul
-     * speed up GF2X mul using new x86 instructions
      * allow 32-bit SP MulMod...this would allow GPU/SSE 
        support...both this and previous would require
        a complete scan to introduce new, special types
@@ -26,6 +27,7 @@ These are basically notes to myself on preparing a new
 distribution of NTL.
 -----------------------------
 
+- make sure I update tour-time.html
 
 - update ../README and ../doc/copying.txt
 
@@ -54,7 +56,5 @@ make ppdoc
 make ppclean
 make package
 make winpack
-
-
 
 

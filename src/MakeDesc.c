@@ -1036,6 +1036,9 @@ int main()
 
    if (nbits % 2 != 0) nbits--;
 
+   // hold to at most 60 bits on 64-bit machines
+   if (bpl >= 64 && nbits > bpl-4) nbits = bpl-4;
+
    /*
     * Set wnbits = min(bpl-2, ldp-3) [and even]
     */
@@ -1051,6 +1054,9 @@ int main()
    else {
       wnbits = nbits;
    }
+
+   // hold to at most 60 bits on 64-bit machines
+   if (bpl >= 64 && wnbits > bpl-4) wnbits = bpl-4;
 
    if (wnbits <= nbits) ldp = 0;
    // disable long doubles if it doesn't increase nbits...

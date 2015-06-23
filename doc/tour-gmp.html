@@ -50,6 +50,16 @@ on backward compatabilty</a>
 so that you can write portable code and avoid deprecated constructs.
 
 <p>
+<b>Note:</b> GMP is thread safe, so you should feel free to use it
+in a thread-safe build of NTL.
+However, the current version (v6) 
+is <i>not</i> entirely exception friendly (it may
+abort a running program, but only in some very extreme and
+unusal circumstances).
+
+
+
+<p>
 <h2>
 Downloading and building GMP
 </h2>

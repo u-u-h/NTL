@@ -226,7 +226,7 @@ SCRIPTS=$(SCRIPTS2)
 
 # auxilliary source
 
-MD=MakeDesc.c MakeDescAux.c newnames.c gen_gmp_aux.c
+MD=MakeDesc.c MakeDescAux.c newnames.c gen_gmp_aux.c CheckPCLMUL.c
 
 GT=GetTime1.c GetTime2.c GetTime3.c GetTime4.c GetTime5.c TestGetTime.c
 
@@ -379,7 +379,8 @@ GetTime.o: GetTime.c
 GetPID.o: GetPID.c 
 	$(LCOMP) $(COMPILE) GetPID.c
 
-
+CheckPCLMUL: CheckPCLMUL.c
+	$(LINK) -o  CheckPCLMUL CheckPCLMUL.c $(LDLIBS)
 
 .c.o: 
 	$(LCOMP) $(COMPILE) $(GF2X_OPT_INCDIR) $<

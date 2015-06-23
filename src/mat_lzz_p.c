@@ -63,7 +63,7 @@ void mul_aux(mat_zz_p& X, const mat_zz_p& A, const mat_zz_p& B)
    if (m > 1) {  // new preconditioning code
 
       long p = zz_p::modulus();
-      wide_double pinv = zz_p::ModulusInverse();
+      mulmod_t pinv = zz_p::ModulusInverse();
 
       
       vec_long::Watcher watch_mul_aux_vec(mul_aux_vec);
@@ -99,7 +99,7 @@ void mul_aux(mat_zz_p& X, const mat_zz_p& A, const mat_zz_p& B)
    else {  // just use the old code, w/o preconditioning
 
       long p = zz_p::modulus();
-      wide_double pinv = zz_p::ModulusInverse();
+      mulmod_t pinv = zz_p::ModulusInverse();
 
       long i, j, k;  
       long acc, tmp;  
@@ -146,7 +146,7 @@ void mul(vec_zz_p& x, const vec_zz_p& a, const mat_zz_p& B)
    else if (m == 1) {
 
       long p = zz_p::modulus();
-      wide_double pinv = zz_p::ModulusInverse();
+      mulmod_t pinv = zz_p::ModulusInverse();
 
       long acc, tmp;
       long k;
@@ -165,7 +165,7 @@ void mul(vec_zz_p& x, const vec_zz_p& a, const mat_zz_p& B)
 
 
       long p = zz_p::modulus();
-      wide_double pinv = zz_p::ModulusInverse();
+      mulmod_t pinv = zz_p::ModulusInverse();
 
       vec_long::Watcher watch_mul_aux_vec(mul_aux_vec);
       mul_aux_vec.SetLength(m);
@@ -212,7 +212,7 @@ void mul_aux(vec_zz_p& x, const mat_zz_p& A, const vec_zz_p& b)
    zz_p* xp = x.elts();
 
    long p = zz_p::modulus();
-   wide_double pinv = zz_p::ModulusInverse();
+   mulmod_t pinv = zz_p::ModulusInverse();
 
    long i, k;
    long acc, tmp;
@@ -289,7 +289,7 @@ void mul(mat_zz_p& X, const mat_zz_p& A, zz_p b)
    else {
       
       long p = zz_p::modulus();
-      wide_double pinv = zz_p::ModulusInverse();
+      mulmod_t pinv = zz_p::ModulusInverse();
       long bb = rep(b);
       mulmod_precon_t bpinv = PrepMulModPrecon(bb, p, pinv);
       
@@ -357,7 +357,7 @@ void determinant(zz_p& d, const mat_zz_p& M_in)
    set(det);
 
    long p = zz_p::modulus();
-   wide_double pinv = zz_p::ModulusInverse();
+   mulmod_t pinv = zz_p::ModulusInverse();
 
    for (k = 0; k < n; k++) {
       pos = -1;
@@ -497,7 +497,7 @@ void solve(zz_p& d, vec_zz_p& X,
    set(det);
 
    long p = zz_p::modulus();
-   wide_double pinv = zz_p::ModulusInverse();
+   mulmod_t pinv = zz_p::ModulusInverse();
 
    for (k = 0; k < n; k++) {
       pos = -1;
@@ -591,7 +591,7 @@ void inv(zz_p& d, mat_zz_p& X, const mat_zz_p& A)
    set(det);
 
    long p = zz_p::modulus();
-   wide_double pinv = zz_p::ModulusInverse();
+   mulmod_t pinv = zz_p::ModulusInverse();
 
    for (k = 0; k < n; k++) {
       pos = -1;
@@ -671,7 +671,7 @@ long gauss(mat_zz_p& M, long w)
       LogicError("gauss: bad args");
 
    long p = zz_p::modulus();
-   wide_double pinv = zz_p::ModulusInverse();
+   mulmod_t pinv = zz_p::ModulusInverse();
    long T1, T2;
 
    l = 0;

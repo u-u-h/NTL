@@ -114,56 +114,49 @@ $time = "999999999999999";
 $aflag = "default";
 $bflag = "default";
 $cflag = "default";
-$dflag = "default";
 
+$Config{"NTL_FFT_BIGTAB"} = 1;
 
-foreach $aflag1 ("default", "NTL_AVOID_BRANCHING") {
+foreach $aflag1 ("default", "NTL_FFT_LAZYMUL") {
    foreach $bflag1 ("default", "NTL_SPMM_UL", "NTL_SPMM_ULL", "NTL_SPMM_ASM") {
-      foreach $cflag1 ("default", "NTL_FFT_BIGTAB") {
-         foreach $dflag1 ("default", "NTL_FFT_LAZYMUL") {
+      foreach $cflag1 ("default", "NTL_AVOID_BRANCHING") {
 
 
-            $Config{$aflag1} = 1;
-            $Config{$bflag1} = 1;
-            $Config{$cflag1} = 1;
-            $Config{$dflag1} = 1;
+         $Config{$aflag1} = 1;
+         $Config{$bflag1} = 1;
+         $Config{$cflag1} = 1;
 
 
-            if ($Config{"NTL_FFT_LAZYMUL"}) {
+         if ($Config{"NTL_FFT_LAZYMUL"} && $Config{"NTL_SPMM_ULL"} == 0 && $Config{"NTL_SPMM_ASM"} == 0) {
 
-               if ($Config{"NTL_FFT_BIGTAB"} == 0 ||
-                   ($Config{"NTL_SPMM_ULL"} == 0 && $Config{"NTL_SPMM_ASM"} == 0)) {
+               $Config{$aflag1} = 0;
+               $Config{$bflag1} = 0;
+               $Config{$cflag1} = 0;
 
-                  $Config{$aflag1} = 0;
-                  $Config{$bflag1} = 0;
-                  $Config{$cflag1} = 0;
-                  $Config{$dflag1} = 0;
-
-                  print "skip: $aflag1 $bflag1 $cflag1 $dflag1\n";
-                  next;
-               }
-              
-            }
-
-            print "run: $aflag1 $bflag1 $cflag1 $dflag1\n";
-            GenConfigHeader();
-            $time1 = RunProg("Poly1TimeTest");
-
-            if ($time1 < $time) {
-               $aflag = $aflag1;
-               $bflag = $bflag1;
-               $cflag = $cflag1;
-               $dflag = $dflag1;
-               $time = $time1;
-            }
-
-            $Config{$aflag1} = 0;
-            $Config{$bflag1} = 0;
-            $Config{$cflag1} = 0;
-            $Config{$dflag1} = 0;
-            unlink("FFT.o");  
-            unlink("ZZ_pX.o");  
+               print "skip: $aflag1 $bflag1 $cflag1\n";
+               next;
          }
+
+         print "run: $aflag1 $bflag1 $cflag1 NTL_FFT_BIGTAB\n";
+         GenConfigHeader();
+         $time1 = RunProg("Poly1TimeTest");
+
+         if ($time1 < $time) {
+            $aflag = $aflag1;
+            $bflag = $bflag1;
+            $cflag = $cflag1;
+            $time = $time1;
+         }
+
+         $Config{$aflag1} = 0;
+         $Config{$bflag1} = 0;
+         $Config{$cflag1} = 0;
+
+         # these are the files that include class definitions
+         # from FFT.h and ZZ_p.h, which have memvers defined
+         # in terms of mulmod_precon_t
+         unlink("FFT.o"); unlink("ZZ_p.o"); unlink("vec_ZZ_p.o");
+         unlink("ZZ_pX.o"); unlink("ZZ_pX1.o"); 
       }
    }
 }
@@ -171,40 +164,62 @@ foreach $aflag1 ("default", "NTL_AVOID_BRANCHING") {
 $Config{$aflag} = 1;
 $Config{$bflag} = 1;
 $Config{$cflag} = 1;
-$Config{$dflag} = 1;
-unlink("lip.o");   #  AVOID_BRANCHING affects this too
-unlink("ZZ_pX.o");   # FFT_BIGTABS and FFT_LAZYMUL affect this
-unlink("lzz_pX.o");   # FFT_BIGTABS and FFT_LAZYMUL affect this
+
+# now see if BIGTAB really helps
 
 
-# set the flags GF2X_NOINLINE and GF2X_ALTCODE...try all pairs
+$Config{"NTL_FFT_BIGTAB"} = 0;
+print "run: $aflag $bflag $cflag default\n";
+GenConfigHeader();
+$time1 = RunProg("Poly1TimeTest");
 
-$time = "999999999999999";
-$aflag = "default";
-$bflag = "default";
-
-foreach $aflag1 ("default", "NTL_GF2X_NOINLINE") {
-   foreach $bflag1 ("default", "NTL_GF2X_ALTCODE", "NTL_GF2X_ALTCODE1") {
-
-      $Config{$aflag1} = 1;
-      $Config{$bflag1} = 1;
-      GenConfigHeader();
-      $time1 = RunProg("GF2XTimeTest");
-
-      if ($time1 < $time) {
-	 $aflag = $aflag1;
-	 $bflag = $bflag1;
-	 $time = $time1;
-      }
-
-      $Config{$aflag1} = 0;
-      $Config{$bflag1} = 0;
-      unlink("GF2X.o");
-   }
+if ($time1*1.0 > $time*1.05) {  
+   # stick with BIGTABs
+   $Config{"NTL_FFT_BIGTAB"} = 1;
 }
 
-$Config{$aflag} = 1;
-$Config{$bflag} = 1;
+
+unlink("FFT.o"); unlink("ZZ_p.o"); unlink("vec_ZZ_p.o");
+unlink("ZZ_pX.o"); unlink("ZZ_pX1.o"); 
+
+# also unlink lip.o, since that may depend on the MulMod impl
+unlink("lip.o");   
+
+
+if ($Config{"NTL_PCLMUL"} == 0) {
+
+   # set the flags GF2X_NOINLINE and GF2X_ALTCODE...try all pairs
+   # bit don't bother with this if PCLMUL is enabled
+
+   $time = "999999999999999";
+   $aflag = "default";
+   $bflag = "default";
+
+   foreach $aflag1 ("default", "NTL_GF2X_NOINLINE") {
+      foreach $bflag1 ("default", "NTL_GF2X_ALTCODE", "NTL_GF2X_ALTCODE1") {
+
+         $Config{$aflag1} = 1;
+         $Config{$bflag1} = 1;
+         GenConfigHeader();
+         $time1 = RunProg("GF2XTimeTest");
+
+         if ($time1 < $time) {
+            $aflag = $aflag1;
+            $bflag = $bflag1;
+            $time = $time1;
+         }
+
+         $Config{$aflag1} = 0;
+         $Config{$bflag1} = 0;
+         unlink("GF2X.o");
+      }
+   }
+
+   $Config{$aflag} = 1;
+   $Config{$bflag} = 1;
+
+
+ }
 
 
 

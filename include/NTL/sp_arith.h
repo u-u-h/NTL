@@ -20,8 +20,7 @@ The number n itself should be in the range 1..2^{NTL_SP_NBITS}-1.
 // I've declared these "static" so that the installation wizard
 // has more flexibility, without worrying about the (rather esoteric)
 // possibility of the linker complaining when the definitions
-// are inconsistent across severeal files.
-// Maybe an unnamed namespace would be better.
+// are inconsistent across several files.
 
 // DIRT: undocumented feature: in all of these MulMod routines,
 // the first argument, a, need only be in the range
@@ -189,10 +188,8 @@ static inline long MulMod(long a, long b, long n)
    res -= n;
    res += (res >> (NTL_BITS_PER_LONG-1)) & n;
 #else
-   if (res >= n)
-      res -= n;
-   else if (res < 0)
-      res += n;
+   if (res >= n) res -= n;
+   if (res < 0) res += n;
 #endif
 
    return res;
@@ -213,13 +210,27 @@ static inline long MulMod(long a, long b, long n, wide_double ninv)
    res -= n;
    res += (res >> (NTL_BITS_PER_LONG-1)) & n;
 #else
-   if (res >= n)
-      res -= n;
-   else if (res < 0)
-      res += n;
+   if (res >= n) res -= n;
+   if (res < 0) res += n;
 #endif
    return res;
 }
+
+static inline long MulModWithQuo(long& qq, long a, long b, long n, wide_double ninv)
+{
+   long q, res;
+
+   q  = (long) ((((wide_double) a) * ((wide_double) b)) * ninv); 
+
+   res = cast_signed( cast_unsigned(a)*cast_unsigned(b) - 
+                      cast_unsigned(q)*cast_unsigned(n) );
+
+   if (res >= n) { res -= n; q++; }
+   if (res < 0) { res += n; q--; }
+   qq = q;
+   return res;
+}
+
 
 
 static inline long MulMod2_legacy(long a, long b, long n, wide_double bninv)
@@ -237,10 +248,8 @@ static inline long MulMod2_legacy(long a, long b, long n, wide_double bninv)
    res -= n;
    res += (res >> (NTL_BITS_PER_LONG-1)) & n;
 #else
-   if (res >= n)
-      res -= n;
-   else if (res < 0)
-      res += n;
+   if (res >= n) res -= n;
+   if (res < 0) res += n;
 #endif
    return res;
 }
@@ -254,13 +263,8 @@ static inline long MulDivRem(long& qq, long a, long b, long n, wide_double bninv
    res = cast_signed( cast_unsigned(a)*cast_unsigned(b) - 
                       cast_unsigned(q)*cast_unsigned(n) );
 
-   if (res >= n) {
-      res -= n;
-      q++;
-   } else if (res < 0) {
-      res += n;
-      q--;
-   }
+   if (res >= n) { res -= n; q++; } 
+   if (res < 0) { res += n; q--; }
 
    qq = q;
    return res;
@@ -289,10 +293,8 @@ static inline long MulMod(long a, long b, long n)
    res -= ((unsigned long) n);
    res += (-(res >> (NTL_BITS_PER_LONG-1))) & ((unsigned long) n);
 #else
-   if (res >> (NTL_BITS_PER_LONG-1))
-      res += ((unsigned long) n);
-   else if (((long) res) >= n)
-      res -= ((unsigned long) n);
+   if (res >> (NTL_BITS_PER_LONG-1)) res += ((unsigned long) n);
+   if (((long) res) >= n) res -= ((unsigned long) n);
 #endif
  
    return ((long) res);
@@ -313,14 +315,30 @@ static inline long MulMod(long a, long b, long n, wide_double ninv)
    res -= ((unsigned long) n);
    res += (-(res >> (NTL_BITS_PER_LONG-1))) & ((unsigned long) n);
 #else
-   if (res >> (NTL_BITS_PER_LONG-1))
-      res += ((unsigned long) n);
-   else if (((long) res) >= n)
-      res -= ((unsigned long) n);
+   if (res >> (NTL_BITS_PER_LONG-1)) res += ((unsigned long) n);
+   if (((long) res) >= n) res -= ((unsigned long) n);
 #endif
  
    return ((long) res);
 }
+
+static inline long MulModWithQuo(long& qq, long a, long b, long n, wide_double ninv)
+{
+   long q; 
+   unsigned long res;
+
+   q  = (long) ((((wide_double) a) * ((wide_double) b)) * ninv); 
+
+   res = ((unsigned long) a)*((unsigned long) b) - 
+         ((unsigned long) q)*((unsigned long) n);
+
+   if (res >> (NTL_BITS_PER_LONG-1)) { res += ((unsigned long) n); q--; }
+   if (((long) res) >= n) { res -= ((unsigned long) n); q++; }
+
+   qq = q;
+   return ((long) res);
+}
+
 
 
 static inline long MulMod2_legacy(long a, long b, long n, wide_double bninv)
@@ -494,6 +512,27 @@ static inline long MulModPrecon(long a, long b, long n, unsigned long bninv)
 }
 
 
+
+static inline long MulModPreconWithQuo(long& qq, long a, long b, long n, unsigned long bninv)
+{
+   long q, res;
+   
+   q = (long) MulHiUL(a, bninv);
+
+   res = cast_signed( cast_unsigned(a)*cast_unsigned(b) - 
+                      cast_unsigned(q)*cast_unsigned(n) );
+
+   if (res >= n) {
+      res -= n;
+      q++;
+   }
+
+   qq = q;
+   return res;
+}
+
+
+
 #else
 
 static inline long MulModPrecon(long a, long b, long n, unsigned long bninv)
@@ -515,6 +554,26 @@ static inline long MulModPrecon(long a, long b, long n, unsigned long bninv)
 
    return (long) res;
 }
+
+
+static inline long MulModPreconWithQuo(long& qq, long a, long b, long n, unsigned long bninv)
+{
+   unsigned long q, res;
+
+   
+   q = MulHiUL(a, bninv);
+
+   res = ((unsigned long) a)*((unsigned long) b) - q*((unsigned long) n);
+
+   if (((long) res) >= n) {
+      res -= ((unsigned long) n);
+      q++;
+   }
+
+   qq = (long) q;
+   return (long) res;
+}
+
 
 #endif
 
@@ -599,6 +658,8 @@ static inline long MulHiSP(long b, long d)
 
 #if (!defined(NTL_CLEAN_SPMM))
 
+
+
 static inline long MulModPrecon(long a, long b, long n, long bninv)
 {
 
@@ -619,6 +680,27 @@ static inline long MulModPrecon(long a, long b, long n, long bninv)
 #endif
    return res;
 }
+
+static inline long MulModPreconWithQuo(long& qq, long a, long b, long n, long bninv)
+{
+
+   long q, res;
+
+   q = MulHiSP(a, bninv);
+
+   res = cast_signed( cast_unsigned(a)*cast_unsigned(b) - 
+                      cast_unsigned(q)*cast_unsigned(n) );
+
+   if (res >= n) {
+      res -= n;
+      q++;
+   }
+
+   qq = q;
+   return res;
+}
+
+
 
 
 
@@ -646,6 +728,26 @@ static inline long MulModPrecon(long a, long b, long n, long bninv)
 }
 
 
+static inline long MulModPreconWithQuo(long& qq, long a, long b, long n, long bninv)
+{
+
+   unsigned long q, res;
+
+   q = MulHiSP(a, bninv);
+
+   res = ((unsigned long) a)*((unsigned long) b) - q*((unsigned long) n);
+
+   if (((long) res) >= n) {
+      res -= ((unsigned long) n);
+      q++;
+   }
+
+   qq = (long) q;
+   return (long) res;
+}
+
+
+
 #endif
 
 
@@ -668,6 +770,12 @@ static inline long MulModPrecon(long a, long b, long n, wide_double bninv)
    return MulMod2_legacy(a, b, n, bninv);
 }
 
+static inline long MulModPreconWithQuo(long& qq, long a, long b, long n, wide_double bninv)
+{
+   return MulDivRem(qq, a, b, n, bninv);
+}
+
+
 
 #endif
 
@@ -686,7 +794,39 @@ static inline long MulMod2(long a, long b, long n, wide_double bninv)
    return MulMod2_legacy(a, b, n, ninv);
 }
 
+
 #endif
+
+
+
+
+static inline
+void VectorMulModPrecon(long k, long *x, const long *a, long b, long n, 
+                        mulmod_precon_t bninv)
+{
+   for (long i = 0; i < k; i++)
+      x[i] = MulModPrecon(a[i], b, n, bninv);
+}
+
+static inline
+void VectorMulMod(long k, long *x, const long *a, long b, long n, 
+                  wide_double ninv)
+{
+   mulmod_precon_t bninv;
+   bninv = PrepMulModPrecon(b, n, ninv);
+   VectorMulModPrecon(k, x, a, b, n, bninv);
+}
+
+
+static inline 
+void VectorMulMod(long k, long *x, const long *a, long b, long n)
+{
+   wide_double ninv = PrepMulMod(n);
+   VectorMulMod(k, x, a, b, n, ninv);
+}
+
+
+
 
 
 

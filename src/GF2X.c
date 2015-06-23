@@ -13,6 +13,31 @@
 #include <gf2x.h>
 #endif
 
+
+#ifdef NTL_PCLMUL
+
+#if (NTL_BITS_PER_LONG != 64)
+#error "NTL_PCLMUL only works on 64-bit machines"
+#endif
+
+#include <wmmintrin.h>
+
+#define NTL_INLINE inline
+
+static inline void
+pclmul_mul1 (unsigned long *c, unsigned long a, unsigned long b)
+{
+   __m128i aa = _mm_setr_epi64( _mm_cvtsi64_m64(a), _mm_cvtsi64_m64(0));
+   __m128i bb = _mm_setr_epi64( _mm_cvtsi64_m64(b), _mm_cvtsi64_m64(0));
+   _mm_storeu_si128((__m128i*)c, _mm_clmulepi64_si128(aa, bb, 0));
+}
+#else
+
+
+#define NTL_INLINE
+
+#endif
+
 NTL_START_IMPL
 
 NTL_THREAD_LOCAL
@@ -558,7 +583,11 @@ static
 void mul1(_ntl_ulong *c, _ntl_ulong a, _ntl_ulong b)
 {
 
+#ifdef NTL_PCLMUL
+pclmul_mul1(c, a, b);
+#else
 NTL_EFF_BB_MUL_CODE0
+#endif
 
 
 }
@@ -574,8 +603,11 @@ static inline
 void mul1_inline(_ntl_ulong *c, _ntl_ulong a, _ntl_ulong b)
 {
 
-
+#ifdef NTL_PCLMUL
+pclmul_mul1(c, a, b);
+#else
 NTL_EFF_BB_MUL_CODE0
+#endif
 
 
 }
@@ -588,8 +620,25 @@ static
 void Mul1(_ntl_ulong *cp, const _ntl_ulong *bp, long sb, _ntl_ulong a)
 {
  
+#ifdef NTL_PCLMUL
+
+   long i;
+   unsigned long carry, prod[2];
+
+   carry = 0;
+   for (i = 0; i < sb; i++) {
+      pclmul_mul1(prod, bp[i], a);
+      cp[i] = carry ^ prod[0];
+      carry = prod[1];
+   }
+
+   cp[sb] = carry;
+
+#else
 
 NTL_EFF_BB_MUL_CODE1
+
+#endif
 
 
 }
@@ -598,8 +647,26 @@ static
 void AddMul1(_ntl_ulong *cp, const _ntl_ulong* bp, long sb, _ntl_ulong a)
 {
 
+#ifdef NTL_PCLMUL
+
+   long i;
+   unsigned long carry, prod[2];
+
+   carry = 0;
+   for (i = 0; i < sb; i++) {
+      pclmul_mul1(prod, bp[i], a);
+      cp[i] ^= carry ^ prod[0];
+      carry = prod[1];
+   }
+
+   cp[sb] ^= carry;
+
+#else
 
 NTL_EFF_BB_MUL_CODE2
+
+#endif
+
 
 
 }
@@ -609,8 +676,25 @@ static
 void Mul1_short(_ntl_ulong *cp, const _ntl_ulong *bp, long sb, _ntl_ulong a)
 {
  
+#ifdef NTL_PCLMUL
+
+   long i;
+   unsigned long carry, prod[2];
+
+   carry = 0;
+   for (i = 0; i < sb; i++) {
+      pclmul_mul1(prod, bp[i], a);
+      cp[i] = carry ^ prod[0];
+      carry = prod[1];
+   }
+
+   cp[sb] = carry;
+
+#else
 
 NTL_EFF_SHORT_BB_MUL_CODE1
+
+#endif
 
 
 }
@@ -623,8 +707,11 @@ static
 void mul_half(_ntl_ulong *c, _ntl_ulong a, _ntl_ulong b)
 {
 
-
+#ifdef NTL_PCLMUL
+pclmul_mul1(c, a, b);
+#else
 NTL_EFF_HALF_BB_MUL_CODE0
+#endif
 
 
 }
@@ -632,9 +719,12 @@ NTL_EFF_HALF_BB_MUL_CODE0
 
 // mul2...mul8 hard-code 2x2...8x8 word multiplies.
 // I adapted these routines from LiDIA (except mul3, see below).
-// Inlining these seems to hurt, not help.
+// NOTE: Generally, inlining these functions seems to hurt performance,
+// at least when using software mul1; for hardware mul1, I've
+// switched to making mul2, 3, 4 inline, although this should
+// really be profiled.
 
-static
+static NTL_INLINE
 void mul2(_ntl_ulong *c, const _ntl_ulong *a, const _ntl_ulong *b)
 {
    _ntl_ulong hs0, hs1;
@@ -662,7 +752,7 @@ void mul2(_ntl_ulong *c, const _ntl_ulong *a, const _ntl_ulong *b)
  * an its application to ECC" (ACISP 2003).
  */
 
-static
+static NTL_INLINE
 void mul3 (_ntl_ulong *c, const _ntl_ulong *a, const _ntl_ulong *b)
 {
    _ntl_ulong d0[2], d1[2], d2[2], d01[2], d02[2], d12[2];
@@ -684,7 +774,7 @@ void mul3 (_ntl_ulong *c, const _ntl_ulong *a, const _ntl_ulong *b)
 
 }
 
-static
+static NTL_INLINE
 void mul4(_ntl_ulong *c, const _ntl_ulong *a, const _ntl_ulong *b)
 {
    _ntl_ulong hs0[2], hs1[2];
@@ -945,85 +1035,6 @@ void mul(GF2X& c, const GF2X& a, const GF2X& b)
 
    if (&a == &b) {
       sqr(c, a);
-      return;
-   }
-
-   if (sa == 1 && sb == 1) {
-      // special case...
-      _ntl_ulong v[2];
-      if (!(a0 >> NTL_BITS_PER_LONG/2))
-         mul_half(v, b0, a0);
-      else if (!(b0 >> NTL_BITS_PER_LONG/2))
-         mul_half(v, a0, b0);
-      else
-         mul1(v, a0, b0);
-
-      if (v[1]) {
-         c.xrep.SetLength(2);
-         _ntl_ulong *cp = &c.xrep[0];
-         cp[0] = v[0];
-         cp[1] = v[1];
-      }
-      else {
-         c.xrep.SetLength(1);
-         _ntl_ulong *cp = &c.xrep[0];
-         cp[0] = v[0];
-      }
-      return;
-   }
-
-   if (sa == 2 && sb == 2) {
-      // special case...
-      _ntl_ulong v[4];
-      mul2(v, &a.xrep[0], &b.xrep[0]);
-      if (v[3]) {
-         c.xrep.SetLength(4);
-         _ntl_ulong *cp = &c.xrep[0];
-         cp[0] = v[0];
-         cp[1] = v[1];
-         cp[2] = v[2];
-         cp[3] = v[3];
-      }
-      else {
-         c.xrep.SetLength(3);
-         _ntl_ulong *cp = &c.xrep[0];
-         cp[0] = v[0];
-         cp[1] = v[1];
-         cp[2] = v[2];
-      }
-      return;
-   }
-
-   // another special case:  one of the two inputs
-   // has length 1 (or less).
-
-   if (sa == 1) {
-      c.xrep.SetLength(sb + 1);
-      _ntl_ulong *cp = c.xrep.elts();
-      const _ntl_ulong *bp = b.xrep.elts();
-
-      if (a0 >> (NTL_BITS_PER_LONG-NTL_BB_MUL1_BITS+1))
-         Mul1(cp, bp, sb, a0);
-      else
-         Mul1_short(cp, bp, sb, a0);
-
-
-      c.normalize();
-      return;
-   }
-
-   if (sb == 1) {
-      c.xrep.SetLength(sa + 1);
-      _ntl_ulong *cp = c.xrep.elts();
-      const _ntl_ulong *ap = a.xrep.elts();
-
-
-      if (b0 >> (NTL_BITS_PER_LONG-NTL_BB_MUL1_BITS+1))
-         Mul1(cp, ap, sa, b0);
-      else
-         Mul1_short(cp, ap, sa, b0);
-
-      c.normalize();
       return;
    }
 
@@ -1615,15 +1626,22 @@ static const _ntl_ulong sqrtab[256] = {
 
 
 
-static inline 
+
+static inline
 void sqr1(_ntl_ulong *c, _ntl_ulong a)
 {
+#ifdef NTL_PCLMUL
+   // this appears to be marginally faster than the
+   // table-driven code
+   pclmul_mul1(c, a, a);
+#else
    _ntl_ulong hi, lo;
 
    NTL_BB_SQR_CODE
 
    c[0] = lo;
    c[1] = hi;
+#endif
 }
 
 

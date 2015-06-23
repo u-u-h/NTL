@@ -49,6 +49,7 @@ void ZZ_p::DoInstall()
       ZZ B, M, M1, M2, M3;
       long n, i;
       long q, t;
+      mulmod_t qinv;
 
       sqr(B, ZZ_pInfo->p);
 
@@ -89,21 +90,23 @@ void ZZ_p::DoInstall()
       FFTInfo->MaxRoot = CalcMaxRoot(q);
 
 
-      wide_double fn = wide_double(n);
+      double fn = double(n);
 
-      if (8.0*fn*(fn+32) > NTL_WIDE_FDOUBLE_PRECISION)
+      if (8.0*fn*(fn+48) > NTL_FDOUBLE_PRECISION)
          ResourceError("modulus too big");
 
 
-#ifndef NTL_USE_LONGDOUBLE
-      if (8.0*fn*(fn+32) <= NTL_WIDE_FDOUBLE_PRECISION/wide_double(NTL_SP_BOUND))
+      if (8.0*fn*(fn+48) <= NTL_FDOUBLE_PRECISION/double(NTL_SP_BOUND))
          FFTInfo->QuickCRT = true;
       else
-#endif
          FFTInfo->QuickCRT = false;
+      
+      // FIXME: some of this stuff does not need to be initialized
+      // at all if FFTInfo->crt_struct.special()
 
       FFTInfo->x.SetLength(n);
       FFTInfo->u.SetLength(n);
+      FFTInfo->uqinv.SetLength(n);
 
       FFTInfo->rem_struct.init(n, ZZ_pInfo->p, GetFFTPrime);
 
@@ -118,6 +121,7 @@ void ZZ_p::DoInstall()
 
          for (i = 0; i < n; i++) {
             q = GetFFTPrime(i);
+            qinv = GetFFTPrimeInv(i);
 
             long tt = rem(qq, q);
 
@@ -136,8 +140,9 @@ void ZZ_p::DoInstall()
             FFTInfo->crt_struct.insert(i, M3);
 
 
-            FFTInfo->x[i] = ((wide_double) t)/((wide_double) q);
+            FFTInfo->x[i] = ((double) t)/((double) q);
             FFTInfo->u[i] = t;
+            FFTInfo->uqinv[i] = PrepMulModPrecon(FFTInfo->u[i], q, qinv);
          }
       }
 
