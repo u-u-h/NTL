@@ -779,16 +779,15 @@ long operator!=(const Vec<T>& a, const Vec<T>& b)
 
 // conversions
 
+
 template<class T, class S>
 void conv(Vec<T>& x, const Vec<S>& a)
 {
    long n = a.length();
    x.SetLength(n);
-   T *xp = x.elts();
-   const S *ap = a.elts();
 
    for (long i = 0; i < n; i++)
-      conv(xp[i], ap[i]);
+      conv(x[i], a[i]);
 }
 
 
