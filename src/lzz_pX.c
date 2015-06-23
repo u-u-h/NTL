@@ -9,7 +9,7 @@ NTL_START_IMPL
 // NOTE: these are declared extern in lzz_pX.h
 
 const long zz_pX_mod_crossover[5] = {45, 45, 90, 180, 180};
-const long zz_pX_mul_crossover[5] = {90, 400, 600, 1500, 1500};
+const long zz_pX_mul_crossover[5] = {150, 150, 300, 500, 500};
 const long zz_pX_newton_crossover[5] = {150, 150, 300, 700, 700};
 const long zz_pX_div_crossover[5] = {180, 180, 350, 750, 750};
 const long zz_pX_halfgcd_crossover[5] = {90, 90, 180, 350, 350};
@@ -1862,8 +1862,14 @@ void mul(fftRep& z, const fftRep& x, const fftRep& y)
       long q = p_info->q;
       mulmod_t qinv = p_info->qinv;
 
-      for (j = 0; j < n; j++)
-         zp[j] = MulMod(xp[j], yp[j], q, qinv);
+      if (NormalizedModulus(qinv)) {
+         for (j = 0; j < n; j++)
+            zp[j] = NormalizedMulMod(xp[j], yp[j], q, qinv);
+      }
+      else {
+         for (j = 0; j < n; j++)
+            zp[j] = MulMod(xp[j], yp[j], q, qinv);
+      }
    }
    else {
       for (i = 0; i < info->NumPrimes; i++) {
@@ -1874,7 +1880,7 @@ void mul(fftRep& z, const fftRep& x, const fftRep& y)
          mulmod_t qinv = GetFFTPrimeInv(i);
    
          for (j = 0; j < n; j++)
-            zp[j] = MulMod(xp[j], yp[j], q, qinv);
+            zp[j] = NormalizedMulMod(xp[j], yp[j], q, qinv);
       }
    }
 }

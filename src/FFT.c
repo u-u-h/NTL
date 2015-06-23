@@ -258,7 +258,7 @@ no idea how performance will compare.
 // and then only for k-values at most NTL_FFT_BIGTAB_MAXROOT
 
 // NOTE: in newer versions of NTL (v9.1 and later), the BIGTAB
-// code is only about 10-15% faster than the non-BIGTAB code, so
+// code is only about 5-15% faster than the non-BIGTAB code, so
 // this is not a great time/space trade-off.
 
 // NOTE: NTL_FFT_BIGTAB_MAXROOT is set independently of the parameter
@@ -753,9 +753,10 @@ void BitReverseCopy(unsigned long * NTL_RESTRICT B, const long * NTL_RESTRICT A,
 
 
 #ifdef NTL_FFT_LAZYMUL 
-// we only honor the FFT_LAZYMUL flag if either the SPMM_ULL or SPMM_ASM flags are set
+// we only honor the FFT_LAZYMUL flag if either the SPMM_ULL, SPMM_ASM, or LONGLONG_SP_MULMOD 
+// flags are set
 
-#if (!defined(NTL_SPMM_ULL) && !defined(NTL_SPMM_ASM))
+#if (!defined(NTL_SPMM_ULL) && !defined(NTL_SPMM_ASM) && !defined(NTL_LONGLONG_SP_MULMOD))
 #undef NTL_FFT_LAZYMUL
 #endif
 
@@ -1033,8 +1034,92 @@ void NTL_FFT_ROUTINE_NOTAB(long* A, const long* a, long k, const FFTPrimeInfo& i
 
 // FFT with  lazy multiplication
 
+#if (defined(NTL_LONGLONG_SP_MULMOD))
 
-#if (NTL_BITS_PER_LONG - NTL_SP_NBITS >= 4 && NTL_WIDE_DOUBLE_PRECISION - NTL_SP_NBITS >= 4)
+
+#if (NTL_BITS_PER_LONG >= NTL_SP_NBITS+4) 
+
+static inline unsigned long 
+sp_NormalizedLazyPrepMulModPreconWithRem(unsigned long& rres, long b, long n, unsigned long ninv)
+{
+   NTL_ULL_TYPE U = ((NTL_ULL_TYPE) cast_unsigned(b)) << (NTL_SP_NBITS+2);
+   unsigned long H = ((U << (NTL_BITS_PER_LONG-NTL_SP_NBITS-2)) >> NTL_BITS_PER_LONG);
+   unsigned long Q = MulHiUL(H << 4, ninv);
+   unsigned long L = U;
+   long r = L - Q*cast_unsigned(n);  // r in [0..2*n)
+
+   r = sp_CorrectExcessQuo(Q, r, n);
+   rres = r;
+   return Q; // NOTE: not shifted
+}
+
+static inline unsigned long 
+sp_NormalizedLazyPrepMulModPrecon(long b, long n, unsigned long ninv)
+{
+   NTL_ULL_TYPE U = ((NTL_ULL_TYPE) cast_unsigned(b)) << (NTL_SP_NBITS+2);
+   unsigned long H = ((U << (NTL_BITS_PER_LONG-NTL_SP_NBITS-2)) >> NTL_BITS_PER_LONG);
+   unsigned long Q = MulHiUL(H << 4, ninv);
+   unsigned long L = U;
+   long r = L - Q*cast_unsigned(n);  // r in [0..2*n)
+
+   Q += 1L + sp_SignMask(r-n);
+   return Q; // NOTE: not shifted
+}
+
+#else
+
+// NTL_BITS_PER_LONG == NTL_SP_NBITS+2
+static inline unsigned long 
+sp_NormalizedLazyPrepMulModPreconWithRem(unsigned long& rres, long b, long n, unsigned long ninv)
+{
+   unsigned long H = cast_unsigned(b) << 2;
+   unsigned long Q = MulHiUL(H, (ninv << 1)) + H;
+   unsigned long rr = -Q*cast_unsigned(n);  // r in [0..3*n)
+
+   long r = sp_CorrectExcessQuo(Q, rr, n);
+   r = sp_CorrectExcessQuo(Q, r, n);
+   rres = r;
+   return Q;  // NOTE: not shifted
+}
+
+static inline unsigned long 
+sp_NormalizedLazyPrepMulModPrecon(long b, long n, unsigned long ninv)
+{
+   unsigned long H = cast_unsigned(b) << 2;
+   unsigned long Q = MulHiUL(H, (ninv << 1)) + H;
+   unsigned long rr = -Q*cast_unsigned(n);  // r in [0..3*n)
+   Q += 2L + sp_SignMask(rr-n) + sp_SignMask(rr-2*n);
+   return Q; // NOTE: not shifted
+}
+
+
+#endif
+
+
+static inline unsigned long
+LazyPrepMulModPrecon(long b, long n, sp_inverse ninv)
+{
+   return sp_NormalizedLazyPrepMulModPrecon(b << ninv.shamt, n << ninv.shamt, ninv.inv) << (NTL_BITS_PER_LONG-NTL_SP_NBITS-2);
+}
+
+
+static inline unsigned long
+LazyPrepMulModPreconWithRem(unsigned long& rres, long b, long n, sp_inverse ninv)
+{
+   unsigned long qq, rr;
+   qq = sp_NormalizedLazyPrepMulModPreconWithRem(rr, b << ninv.shamt, n << ninv.shamt, ninv.inv); 
+   rres = rr >> ninv.shamt;
+   return qq << (NTL_BITS_PER_LONG-NTL_SP_NBITS-2);
+}
+
+
+
+
+
+
+
+
+#elif (NTL_BITS_PER_LONG - NTL_SP_NBITS >= 4 && NTL_WIDE_DOUBLE_PRECISION - NTL_SP_NBITS >= 4)
 
 
 // slightly faster functions, which should kick in on x86-64, where 
@@ -1051,42 +1136,30 @@ void NTL_FFT_ROUTINE_NOTAB(long* A, const long* a, long k, const FFTPrimeInfo& i
 static inline 
 unsigned long LazyPrepMulModPrecon(long b, long n, wide_double ninv)
 {
-   unsigned long q, r;
+   long q = (long) ( (((wide_double) b) * wide_double(4*NTL_SP_BOUND)) * ninv ); 
 
-   q = (long) ( (((wide_double) b) * wide_double(4*NTL_SP_BOUND)) * ninv ); 
-   r = (((unsigned long) b) << (NTL_SP_NBITS+2) ) - q * ((unsigned long) n);
+   unsigned long rr = (cast_unsigned(b) << (NTL_SP_NBITS+2)) 
+                       - cast_unsigned(q)*cast_unsigned(n);
 
-   if (r >> (NTL_BITS_PER_LONG-1)) {
-      q--;
-   }
-   else if (((long) r) >= n) {
-      q++;
-   }
+   q += sp_SignMask(rr) + sp_SignMask(rr-n) + 1L;
 
-   unsigned long res = q << (NTL_BITS_PER_LONG - NTL_SP_NBITS - 2);
-   return res;
+   return cast_unsigned(q) << (NTL_BITS_PER_LONG - NTL_SP_NBITS - 2);
 }
 
 static inline 
-unsigned long LazyPrepMulModPreconWithRem(unsigned long& rr, long b, long n, wide_double ninv)
+unsigned long LazyPrepMulModPreconWithRem(unsigned long& rres, long b, long n, wide_double ninv)
 {
-   unsigned long q, r;
+   long q = (long) ( (((wide_double) b) * wide_double(4*NTL_SP_BOUND)) * ninv ); 
 
-   q = (long) ( (((wide_double) b) * wide_double(4*NTL_SP_BOUND)) * ninv ); 
-   r = (((unsigned long) b) << (NTL_SP_NBITS+2) ) - q * ((unsigned long) n);
+   unsigned long rr = (cast_unsigned(b) << (NTL_SP_NBITS+2)) 
+                       - cast_unsigned(q)*cast_unsigned(n);
 
-   if (r >> (NTL_BITS_PER_LONG-1)) {
-      q--;
-      r += n;
-   }
-   else if (((long) r) >= n) {
-      q++;
-      r -=n;
-   }
+   long r = sp_CorrectDeficitQuo(q, rr, n);
+   r = sp_CorrectExcessQuo(q, r, n);
 
-   unsigned long res = q << (NTL_BITS_PER_LONG - NTL_SP_NBITS - 2);
-   rr = r;
-   return res;
+   unsigned long qres = cast_unsigned(q) << (NTL_BITS_PER_LONG - NTL_SP_NBITS - 2);
+   rres = r;
+   return qres;
 }
 
 #else
@@ -1095,59 +1168,55 @@ unsigned long LazyPrepMulModPreconWithRem(unsigned long& rr, long b, long n, wid
 static inline 
 unsigned long LazyPrepMulModPrecon(long b, long n, wide_double ninv)
 {
-   unsigned long q, r;
+   long q = (long) ( (((wide_double) b) * wide_double(NTL_SP_BOUND)) * ninv ); 
 
-   q = (long) ( (((wide_double) b) * wide_double(NTL_SP_BOUND)) * ninv ); 
-   r = (((unsigned long) b) << NTL_SP_NBITS ) - q * ((unsigned long) n);
+   unsigned long rr = (cast_unsigned(b) << (NTL_SP_NBITS)) 
+                       - cast_unsigned(q)*cast_unsigned(n);
 
-   if (r >> (NTL_BITS_PER_LONG-1)) {
-      q--;
-      r += n;
-   }
-   else if (((long) r) >= n) {
-      q++;
-      r -=n;
-   }
+   long r = sp_CorrectDeficitQuo(q, rr, n);
+   r = sp_CorrectExcessQuo(q, r, n);
 
-   unsigned long res = q << (NTL_BITS_PER_LONG - NTL_SP_NBITS);
-   long qq, rr;
+   unsigned long qq = q;
 
-   rr = MulDivRem(qq, (long) r, 4, n, wide_double(4L)*ninv);
+   qq = 2*qq;
+   r = 2*r;
+   r = sp_CorrectExcessQuo(qq, r, n);
 
-   res = res + (qq << (NTL_BITS_PER_LONG - NTL_SP_NBITS-2));
+   qq = 2*qq;
+   r = 2*r;
+   qq += sp_SignMask(r-n) + 1L;
 
-   return res;
+   return qq << (NTL_BITS_PER_LONG - NTL_SP_NBITS - 2);
 }
+
+
+
 
 
 static inline 
-unsigned long LazyPrepMulModPreconWithRem(unsigned long& rr, long b, long n, wide_double ninv)
+unsigned long LazyPrepMulModPreconWithRem(unsigned long& rres, long b, long n, wide_double ninv)
 {
-   unsigned long q, r;
+   long q = (long) ( (((wide_double) b) * wide_double(NTL_SP_BOUND)) * ninv ); 
 
-   q = (long) ( (((wide_double) b) * wide_double(NTL_SP_BOUND)) * ninv ); 
-   r = (((unsigned long) b) << NTL_SP_NBITS ) - q * ((unsigned long) n);
+   unsigned long rr = (cast_unsigned(b) << (NTL_SP_NBITS)) 
+                       - cast_unsigned(q)*cast_unsigned(n);
 
-   if (r >> (NTL_BITS_PER_LONG-1)) {
-      q--;
-      r += n;
-   }
-   else if (((long) r) >= n) {
-      q++;
-      r -=n;
-   }
+   long r = sp_CorrectDeficitQuo(q, rr, n);
+   r = sp_CorrectExcessQuo(q, r, n);
 
-   unsigned long res = q << (NTL_BITS_PER_LONG - NTL_SP_NBITS);
-   long qq;
+   unsigned long qq = q;
 
-   rr = MulDivRem(qq, (long) r, 4, n, wide_double(4L)*ninv);
+   qq = 2*qq;
+   r = 2*r;
+   r = sp_CorrectExcessQuo(qq, r, n);
 
-   res = res + (qq << (NTL_BITS_PER_LONG - NTL_SP_NBITS-2));
+   qq = 2*qq;
+   r = 2*r;
+   r = sp_CorrectExcessQuo(qq, r, n);
 
-   return res;
+   rres = r;
+   return qq << (NTL_BITS_PER_LONG - NTL_SP_NBITS - 2);
 }
-
-
 
 #endif
 
@@ -1159,7 +1228,7 @@ unsigned long LazyMulModPreconQuo(unsigned long a, unsigned long b,
 {
    unsigned long q = MulHiUL(a, bninv);
    unsigned long r = a*b - q*n;
-   q = q + 1UL - ((r-n) >> (NTL_BITS_PER_LONG-1));
+   q += sp_SignMask(r-n) + 1L;
    return q << (NTL_BITS_PER_LONG - NTL_SP_NBITS - 2);
 }
 
@@ -1175,24 +1244,15 @@ unsigned long LazyMulModPrecon(unsigned long a, unsigned long b,
 
 
 static inline 
-unsigned long LazyReduce(unsigned long a, unsigned long q)
+unsigned long LazyReduce1(unsigned long a, long q)
 {
-  unsigned long res;
-#if (NTL_ARITH_RIGHT_SHIFT && defined(NTL_AVOID_BRANCHING) && !defined(NTL_CLEAN_INT))
-  // IMPL-DEF: arithmetic right shift
-  res = a - q;
-  res  += cast_unsigned(cast_signed(res)  >> (NTL_BITS_PER_LONG-1)) & q; 
-#elif (defined(NTL_AVOID_BRANCHING))
-  res = a - q;
-  res  += (-(res >> (NTL_BITS_PER_LONG-1))) & q; 
-#else
-  if (a >= q)
-    res = a - q;
-  else
-    res = a;
-#endif
+  return sp_CorrectExcess(long(a), q);
+}
 
-  return res;
+static inline 
+unsigned long LazyReduce2(unsigned long a, long q)
+{
+  return sp_CorrectExcess(a, 2*q);
 }
 
 
@@ -1249,8 +1309,6 @@ void NTL_FFT_ROUTINE_NOTAB(long* A, const long* a, long k, const FFTPrimeInfo& i
    long s, m, m_half, m_fourth, i, j; 
    unsigned long t, u, t1, u1;
 
-   long two_q = 2 * q; 
-
 
    wtab[0] = 1;
    wqinvtab[0] = LazyPrepMulModPrecon(1, q, qinv);
@@ -1284,7 +1342,7 @@ void NTL_FFT_ROUTINE_NOTAB(long* A, const long* a, long k, const FFTPrimeInfo& i
             const unsigned long tt1 = a11; 
             const unsigned long uu1 = a01; 
             const unsigned long b01 = uu1 + tt1; 
-            const unsigned long b11 = uu1 - tt1 + two_q;
+            const unsigned long b11 = uu1 - tt1 + 2*q;
 
             AA0[0] = b01;
             AA1[0] = b11;
@@ -1296,7 +1354,7 @@ void NTL_FFT_ROUTINE_NOTAB(long* A, const long* a, long k, const FFTPrimeInfo& i
             const unsigned long tt1 = LazyMulModPrecon(a11, w, q, wqinv); 
             const unsigned long uu1 = a01; 
             const unsigned long b01 = uu1 + tt1; 
-            const unsigned long b11 = uu1 - tt1 + two_q;
+            const unsigned long b11 = uu1 - tt1 + 2*q;
 
             AA0[1] = b01;
             AA1[1] = b11;
@@ -1313,6 +1371,28 @@ void NTL_FFT_ROUTINE_NOTAB(long* A, const long* a, long k, const FFTPrimeInfo& i
       m_fourth = 1L << (s-2);
 
       long w = root[s];
+
+#if 0
+      // This computes all the multipliers in a straightforward fashion.
+      // It's a bit slower that the strategy used below, even if
+      // NTL_LONGLONG_SP_MULMOD is set
+
+      mulmod_precon_t wqinv = LazyPrepMulModPrecon(w, q, qinv);
+
+
+      for (i = m_half-1, j = m_fourth-1; i >= 0; i -= 2, j--) {
+         long w_j = wtab[j];
+         mulmod_precon_t wqi_j = wqinvtab[j];
+
+         long w_i = LazyReduce1(LazyMulModPrecon(w_j, w, q, wqinv), q);
+         mulmod_precon_t wqi_i = LazyPrepMulModPrecon(w_i, q, qinv);
+
+         wtab[i-1] = w_j;
+         wqinvtab[i-1] = wqi_j;
+         wtab[i] = w_i;
+         wqinvtab[i] = wqi_i;
+      }
+#else
       unsigned long wqinv_rem;
       mulmod_precon_t wqinv = LazyPrepMulModPreconWithRem(wqinv_rem, w, q, qinv);
 
@@ -1326,8 +1406,8 @@ void NTL_FFT_ROUTINE_NOTAB(long* A, const long* a, long k, const FFTPrimeInfo& i
          // computation of lo(w_j*wqinv) below...but I don't think
          // the compiler sees this...oh well...
 
-         long w_i = LazyReduce(LazyMulModPrecon(w_j, w, q, wqinv), q);
-         // long w_i = LazyReduce(LazyMulModPrecon(w, w_j, q, wqi_j), q);
+         long w_i = LazyReduce1(LazyMulModPrecon(w_j, w, q, wqinv), q);
+         // long w_i = LazyReduce1(LazyMulModPrecon(w, w_j, q, wqi_j), q);
 
          mulmod_precon_t wqi_i = LazyMulModPreconQuo(wqinv_rem, w_j, q, wqi_j) 
                                    + cast_unsigned(w_j)*wqinv;
@@ -1337,6 +1417,9 @@ void NTL_FFT_ROUTINE_NOTAB(long* A, const long* a, long k, const FFTPrimeInfo& i
          wtab[i] = w_i;
          wqinvtab[i] = wqi_i;
       }
+
+
+#endif
 
       for (i = 0; i < n; i += m) {
 
@@ -1352,9 +1435,9 @@ void NTL_FFT_ROUTINE_NOTAB(long* A, const long* a, long k, const FFTPrimeInfo& i
                const unsigned long a01 = AA0[j+0];
 
                const unsigned long tt1 = LazyMulModPrecon(a11, w1, q, wqi1);
-               const unsigned long uu1 = LazyReduce(a01, two_q);
+               const unsigned long uu1 = LazyReduce2(a01, q);
                const unsigned long b01 = uu1 + tt1; 
-               const unsigned long b11 = uu1 - tt1 + two_q;
+               const unsigned long b11 = uu1 - tt1 + 2*q;
 
                AA0[j+0] = b01;
                AA1[j+0] = b11;
@@ -1366,9 +1449,9 @@ void NTL_FFT_ROUTINE_NOTAB(long* A, const long* a, long k, const FFTPrimeInfo& i
                const unsigned long a01 = AA0[j+1];
 
                const unsigned long tt1 = LazyMulModPrecon(a11, w1, q, wqi1);
-               const unsigned long uu1 = LazyReduce(a01, two_q);
+               const unsigned long uu1 = LazyReduce2(a01, q);
                const unsigned long b01 = uu1 + tt1; 
-               const unsigned long b11 = uu1 - tt1 + two_q;
+               const unsigned long b11 = uu1 - tt1 + 2*q;
 
                AA0[j+1] = b01;
                AA1[j+1] = b11;
@@ -1380,9 +1463,9 @@ void NTL_FFT_ROUTINE_NOTAB(long* A, const long* a, long k, const FFTPrimeInfo& i
                const unsigned long a01 = AA0[j+2];
 
                const unsigned long tt1 = LazyMulModPrecon(a11, w1, q, wqi1);
-               const unsigned long uu1 = LazyReduce(a01, two_q);
+               const unsigned long uu1 = LazyReduce2(a01, q);
                const unsigned long b01 = uu1 + tt1; 
-               const unsigned long b11 = uu1 - tt1 + two_q;
+               const unsigned long b11 = uu1 - tt1 + 2*q;
 
                AA0[j+2] = b01;
                AA1[j+2] = b11;
@@ -1394,9 +1477,9 @@ void NTL_FFT_ROUTINE_NOTAB(long* A, const long* a, long k, const FFTPrimeInfo& i
                const unsigned long a01 = AA0[j+3];
 
                const unsigned long tt1 = LazyMulModPrecon(a11, w1, q, wqi1);
-               const unsigned long uu1 = LazyReduce(a01, two_q);
+               const unsigned long uu1 = LazyReduce2(a01, q);
                const unsigned long b01 = uu1 + tt1; 
-               const unsigned long b11 = uu1 - tt1 + two_q;
+               const unsigned long b11 = uu1 - tt1 + 2*q;
 
                AA0[j+3] = b01;
                AA1[j+3] = b11;
@@ -1435,9 +1518,9 @@ void NTL_FFT_ROUTINE_NOTAB(long* A, const long* a, long k, const FFTPrimeInfo& i
                const unsigned long a01 = AA0[j+0];
 
                const unsigned long tt1 = LazyMulModPrecon(a11, w1, q, wqi1);
-               const unsigned long uu1 = LazyReduce(a01, two_q);
+               const unsigned long uu1 = LazyReduce2(a01, q);
                const unsigned long b01 = uu1 + tt1; 
-               const unsigned long b11 = uu1 - tt1 + two_q;
+               const unsigned long b11 = uu1 - tt1 + 2*q;
 
                AA0[j+0] = b01;
                AA1[j+0] = b11;
@@ -1450,9 +1533,9 @@ void NTL_FFT_ROUTINE_NOTAB(long* A, const long* a, long k, const FFTPrimeInfo& i
 
                const unsigned long tt1 = LazyMulModPrecon(LazyMulModPrecon(a11, w1, q, wqi1),
                                                           w, q, wqinv);
-               const unsigned long uu1 = LazyReduce(a01, two_q);
+               const unsigned long uu1 = LazyReduce2(a01, q);
                const unsigned long b01 = uu1 + tt1; 
-               const unsigned long b11 = uu1 - tt1 + two_q;
+               const unsigned long b11 = uu1 - tt1 + 2*q;
 
                AA0[j+1] = b01;
                AA1[j+1] = b11;
@@ -1464,9 +1547,9 @@ void NTL_FFT_ROUTINE_NOTAB(long* A, const long* a, long k, const FFTPrimeInfo& i
                const unsigned long a01 = AA0[j+2];
 
                const unsigned long tt1 = LazyMulModPrecon(a11, w1, q, wqi1);
-               const unsigned long uu1 = LazyReduce(a01, two_q);
+               const unsigned long uu1 = LazyReduce2(a01, q);
                const unsigned long b01 = uu1 + tt1; 
-               const unsigned long b11 = uu1 - tt1 + two_q;
+               const unsigned long b11 = uu1 - tt1 + 2*q;
 
                AA0[j+2] = b01;
                AA1[j+2] = b11;
@@ -1479,9 +1562,9 @@ void NTL_FFT_ROUTINE_NOTAB(long* A, const long* a, long k, const FFTPrimeInfo& i
 
                const unsigned long tt1 = LazyMulModPrecon(LazyMulModPrecon(a11, w1, q, wqi1),
                                                           w, q, wqinv);
-               const unsigned long uu1 = LazyReduce(a01, two_q);
+               const unsigned long uu1 = LazyReduce2(a01, q);
                const unsigned long b01 = uu1 + tt1; 
-               const unsigned long b11 = uu1 - tt1 + two_q;
+               const unsigned long b11 = uu1 - tt1 + 2*q;
 
                AA0[j+3] = b01;
                AA1[j+3] = b11;
@@ -1494,8 +1577,8 @@ void NTL_FFT_ROUTINE_NOTAB(long* A, const long* a, long k, const FFTPrimeInfo& i
    /* need to reduce redundant representations */
 
    for (i = 0; i < n; i++) {
-      unsigned long tmp = LazyReduce(AA[i], two_q);
-      A[i] = LazyReduce(tmp, q);
+      unsigned long tmp = LazyReduce2(AA[i], q);
+      A[i] = LazyReduce1(tmp, q);
    }
 }
 
@@ -1907,7 +1990,7 @@ void LazyPrecompFFTMultipliers(long k, long q, mulmod_t qinv, const long *root, 
          // prepare wtab...
 
          if (s == 2) {
-            wtab[1] = LazyReduce(LazyMulModPrecon(wtab[0], w, q, wqinv), q);
+            wtab[1] = LazyReduce1(LazyMulModPrecon(wtab[0], w, q, wqinv), q);
             wqinvtab[1] = LazyPrepMulModPrecon(wtab[1], q, qinv);
          }
          else {
@@ -1917,7 +2000,7 @@ void LazyPrecompFFTMultipliers(long k, long q, mulmod_t qinv, const long *root, 
             i = m_half-1; j = m_fourth-1;
             wtab[i-1] = wtab[j];
             wqinvtab[i-1] = wqinvtab[j];
-            wtab[i] = LazyReduce(LazyMulModPrecon(wtab[i-1], w, q, wqinv), q);
+            wtab[i] = LazyReduce1(LazyMulModPrecon(wtab[i-1], w, q, wqinv), q);
 
             i -= 2; j --;
 
@@ -1927,7 +2010,7 @@ void LazyPrecompFFTMultipliers(long k, long q, mulmod_t qinv, const long *root, 
                wqinvtab[i+2] = LazyPrepMulModPrecon(wp2, q, qinv);
                wtab[i-1] = wm1;
                wqinvtab[i-1] = wqinvtab[j];
-               wtab[i] = LazyReduce(LazyMulModPrecon(wm1, w, q, wqinv), q);
+               wtab[i] = LazyReduce1(LazyMulModPrecon(wm1, w, q, wqinv), q);
             }
 
             wqinvtab[1] = LazyPrepMulModPrecon(wtab[1], q, qinv);
@@ -1994,7 +2077,6 @@ void NTL_FFT_ROUTINE_TAB(long* A, const long* a, long k, const FFTPrimeInfo& inf
    long s, m, m_half, m_fourth, i, j; 
    unsigned long t, u, t1, u1;
 
-   long two_q = 2 * q; 
 
    // s = 1
    for (i = 0; i < n; i += 2) {
@@ -2025,7 +2107,7 @@ void NTL_FFT_ROUTINE_TAB(long* A, const long* a, long k, const FFTPrimeInfo& inf
             const unsigned long tt1 = a11;
             const unsigned long uu1 = a01;
             const unsigned long b01 = uu1 + tt1; 
-            const unsigned long b11 = uu1 - tt1 + two_q;
+            const unsigned long b11 = uu1 - tt1 + 2*q;
 
             AA0[0] = b01;
             AA1[0] = b11;
@@ -2037,7 +2119,7 @@ void NTL_FFT_ROUTINE_TAB(long* A, const long* a, long k, const FFTPrimeInfo& inf
             const unsigned long tt1 = LazyMulModPrecon(a11, w1, q, wqi1);
             const unsigned long uu1 = a01;
             const unsigned long b01 = uu1 + tt1; 
-            const unsigned long b11 = uu1 - tt1 + two_q;
+            const unsigned long b11 = uu1 - tt1 + 2*q;
 
             AA0[1] = b01;
             AA1[1] = b11;
@@ -2073,9 +2155,9 @@ void NTL_FFT_ROUTINE_TAB(long* A, const long* a, long k, const FFTPrimeInfo& inf
                const unsigned long a01 = AA0[j+0];
 
                const unsigned long tt1 = LazyMulModPrecon(a11, w1, q, wqi1);
-               const unsigned long uu1 = LazyReduce(a01, two_q);
+               const unsigned long uu1 = LazyReduce2(a01, q);
                const unsigned long b01 = uu1 + tt1; 
-               const unsigned long b11 = uu1 - tt1 + two_q;
+               const unsigned long b11 = uu1 - tt1 + 2*q;
 
                AA0[j+0] = b01;
                AA1[j+0] = b11;
@@ -2087,9 +2169,9 @@ void NTL_FFT_ROUTINE_TAB(long* A, const long* a, long k, const FFTPrimeInfo& inf
                const unsigned long a01 = AA0[j+1];
 
                const unsigned long tt1 = LazyMulModPrecon(a11, w1, q, wqi1);
-               const unsigned long uu1 = LazyReduce(a01, two_q);
+               const unsigned long uu1 = LazyReduce2(a01, q);
                const unsigned long b01 = uu1 + tt1; 
-               const unsigned long b11 = uu1 - tt1 + two_q;
+               const unsigned long b11 = uu1 - tt1 + 2*q;
 
                AA0[j+1] = b01;
                AA1[j+1] = b11;
@@ -2101,9 +2183,9 @@ void NTL_FFT_ROUTINE_TAB(long* A, const long* a, long k, const FFTPrimeInfo& inf
                const unsigned long a01 = AA0[j+2];
 
                const unsigned long tt1 = LazyMulModPrecon(a11, w1, q, wqi1);
-               const unsigned long uu1 = LazyReduce(a01, two_q);
+               const unsigned long uu1 = LazyReduce2(a01, q);
                const unsigned long b01 = uu1 + tt1; 
-               const unsigned long b11 = uu1 - tt1 + two_q;
+               const unsigned long b11 = uu1 - tt1 + 2*q;
 
                AA0[j+2] = b01;
                AA1[j+2] = b11;
@@ -2115,9 +2197,9 @@ void NTL_FFT_ROUTINE_TAB(long* A, const long* a, long k, const FFTPrimeInfo& inf
                const unsigned long a01 = AA0[j+3];
 
                const unsigned long tt1 = LazyMulModPrecon(a11, w1, q, wqi1);
-               const unsigned long uu1 = LazyReduce(a01, two_q);
+               const unsigned long uu1 = LazyReduce2(a01, q);
                const unsigned long b01 = uu1 + tt1; 
-               const unsigned long b11 = uu1 - tt1 + two_q;
+               const unsigned long b11 = uu1 - tt1 + 2*q;
 
                AA0[j+3] = b01;
                AA1[j+3] = b11;
@@ -2135,9 +2217,9 @@ void NTL_FFT_ROUTINE_TAB(long* A, const long* a, long k, const FFTPrimeInfo& inf
             const unsigned long a01 = AA0[j];
 
             const unsigned long tt1 = LazyMulModPrecon(a11, w1, q, wqi1);
-            const unsigned long uu1 = LazyReduce(a01, two_q);
+            const unsigned long uu1 = LazyReduce2(a01, q);
             const unsigned long b01 = uu1 + tt1; 
-            const unsigned long b11 = uu1 - tt1 + two_q;
+            const unsigned long b11 = uu1 - tt1 + 2*q;
 
             AA0[j] = b01;
             AA1[j] = b11;
@@ -2151,8 +2233,8 @@ void NTL_FFT_ROUTINE_TAB(long* A, const long* a, long k, const FFTPrimeInfo& inf
    /* need to reduce redundant representations */
 
    for (i = 0; i < n; i++) {
-      unsigned long tmp = LazyReduce(AA[i], two_q);
-      A[i] = LazyReduce(tmp, q);
+      unsigned long tmp = LazyReduce2(AA[i], q);
+      A[i] = LazyReduce1(tmp, q);
    }
 }
 

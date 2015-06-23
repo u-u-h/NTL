@@ -4,6 +4,8 @@
 
 #include <NTL/config.h>
 #include <NTL/mach_desc.h>
+#include <NTL/have_LL.h>
+#include <NTL/have_builtin_clzl.h>
 
 
 /*

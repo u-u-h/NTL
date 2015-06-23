@@ -18,7 +18,64 @@ A Tour of NTL: Summary of Changes
 
 <p><hr><p>
 <h3>
-2015.5.2:
+2015.5.23: Changes between NTL 9.1.1 and 9.2.0
+</h3>
+
+<ul>
+<li>
+Completed the transition away from floating-point arithmetic
+for the implementation of single-precision modular arithmetic.
+The current implementation should allow 60-bit moduli on
+64-bit platforms that support a 128-bit extended integer
+type (this is the case for current gcc, clang, and icc 
+compilers). 
+
+<p>
+One can still revert to the "classical" (pre-9.0) implementation
+using double-precision arithmetic (which imposes a 50-bit limit),
+or to the "long double" implementation introduced in v9.0 (60-bit limit).
+
+<p>
+Note that one must compile NTL with GMP to get any of these improvements.
+It would have perhaps been better to use GMP's <tt>longlong.h</tt>
+facility instead of relying on compiler support for extended
+integer types.
+However, at the moment, it is a bit inconvenient to use <tt>longlong.h</tt>
+as a freestanding header file.
+This might change in the future.
+
+<p>
+For details, look <a href="ZZ.cpp.html#modarith">here</a>,
+including the comments entitled "Compatibility notes".
+
+<p>
+<i>Programming notes:</i> <tt>MulMod(a, b, n)</tt> is equivalent to
+<tt>mulmod_t ninv = PrepMulMod(n);</tt> <tt>MulMod(a, b, n, ninv)</tt>.
+Compared to the older, floating-point implementation, the 
+relative cost of computing <tt>ninv</tt> is higher in the new regime.
+In a loop where <tt>n</tt> is invariant, the compiler should
+"hoist" the computation of <tt>ninv</tt>, so it is only done once.
+However, it is usually better to precompute and store <tt>ninv</tt>,
+and use the second form of <tt>MulMod</tt>, with <tt>ninv</tt> passed
+as a parameter (NTL does this internally quite consistently).
+The performance of <tt>MulMod(a, b, n, ninv)</tt> is somewhat faster
+in the new implementation.
+Where possible, one should use <tt>MulModPrecon</tt>, which is faster still
+(useful in situations where both <tt>n</tt> and <tt>b</tt> are invariant).
+
+
+
+<p>
+<li>
+A number of general performance improvements.
+
+
+
+</ul>
+
+<p><hr><p>
+<h3>
+2015.5.16:
 Changes between NTL 9.1.0 and 9.1.1
 </h3>
 

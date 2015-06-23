@@ -24,8 +24,8 @@ zz_pInfoT::zz_pInfoT(long NewP, long maxroot)
    mulmod_t qinv;
 
    p = NewP;
-
    pinv = PrepMulMod(p);
+   red_struct = sp_PrepRem(p);
 
    p_info = 0;
 
@@ -81,6 +81,8 @@ zz_pInfoT::zz_pInfoT(INIT_FFT_TYPE, FFTPrimeInfo *info)
 {
    p = info->q;
    pinv = info->qinv;
+   red_struct = sp_PrepRem(p);
+
 
    p_info = info;
 
@@ -98,7 +100,9 @@ zz_pInfoT::zz_pInfoT(INIT_USER_FFT_TYPE, long q)
    if (!IsFFTPrime(q, w)) LogicError("invalid user supplied prime");
 
    p = q;
-   pinv = PrepMulMod(q);
+   pinv = PrepMulMod(p);
+   red_struct = sp_PrepRem(p);
+
 
    p_info_owner.make();
    p_info = p_info_owner.get();
@@ -192,28 +196,6 @@ void zz_pBak::restore()
 
 
 
-static inline 
-long reduce(long a, long p)
-{
-   if (a >= 0 && a < p)
-      return a;
-   else {
-      a = a % p;
-      if (a < 0) a += p;
-      return a;
-   }
-}
-
-
-zz_p to_zz_p(long a)
-{
-   return zz_p(reduce(a, zz_p::modulus()), INIT_LOOP_HOLE);
-}
-
-void conv(zz_p& x, long a)
-{
-   x._zz_p__rep = reduce(a, zz_p::modulus());
-}
 
 zz_p to_zz_p(const ZZ& a)
 {

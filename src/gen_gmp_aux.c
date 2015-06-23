@@ -73,7 +73,7 @@ void Error(const char *s)
 int main()
 {
    long bpl;
-   long ntl_zz_nbits, ntl_wsp_nbits, ntl_sp_nbits;
+   long ntl_zz_nbits;
 
    fprintf(stderr, "NTL_GMP_LIP flag set\n");
 
@@ -101,13 +101,6 @@ int main()
 
    Error("sorry...this is a funny gmp");
 
-   ntl_wsp_nbits = bpl - 2;
-
-#if (NTL_LONGDOUBLE_OK && !defined(NTL_LEGACY_SP_MULMOD) && !defined(NTL_DISABLE_LONGDOUBLE))
-   ntl_sp_nbits = NTL_WNBITS_MAX;
-#else
-   ntl_sp_nbits = NTL_NBITS_MAX;
-#endif
 
    if (sizeof(mp_size_t) < sizeof(long)) {
       printf("#define NTL_SMALL_MP_SIZE_T\n");
@@ -115,8 +108,6 @@ int main()
    }
 
    fprintf(stderr, "NTL_ZZ_NBITS = %ld\n", ntl_zz_nbits);
-   fprintf(stderr, "NTL_WSP_NBITS = %ld\n", ntl_wsp_nbits);
-   fprintf(stderr, "NTL_SP_NBITS = %ld\n", ntl_sp_nbits);
 
    printf("#define NTL_ZZ_NBITS (%ld)\n",  ntl_zz_nbits);
 

@@ -44,9 +44,7 @@ void print_flag()
 printf("FFT_LAZYMUL ");
 #endif
 
-#if defined(NTL_SPMM_UL)
-printf("SPMM_UL ");
-#elif defined(NTL_SPMM_ULL)
+#if defined(NTL_SPMM_ULL)
 printf("SPMM_ULL ");
 #elif defined(NTL_SPMM_ASM)
 printf("SPMM_ASM ");
@@ -127,7 +125,7 @@ int main()
    }
 
    double t;
-   long i;
+   long i, j;
    long iter;
 
    const int nprimes = 30;
@@ -149,14 +147,24 @@ int main()
 
 
       FFTFwd(AA[r].elts(), aa[r].elts(), L, r);
+      FFTRev1(AA[r].elts(), AA[r].elts(), L, r);
    }
 
    iter = 1;
 
    do {
      t = GetTime();
-     for (i = 0; i < iter; i++) {
-        for (r = 0; r < nprimes; r++) FFTFwd(AA[r].elts(), aa[r].elts(), L, r);
+     for (j = 0; j < iter; j++) {
+        for (r = 0; r < nprimes; r++) {
+           long *AAp = AA[r].elts();
+           long *aap = aa[r].elts();
+           long q = GetFFTPrime(r);
+           mulmod_t qinv = GetFFTPrimeInv(r);
+
+           FFTFwd(AAp, aap, L, r);
+           FFTRev1(AAp, aap, L, r);
+           for (i = 0; i < N; i++) AAp[i] = NormalizedMulMod(AAp[i], aap[i], q, qinv);
+        }
      }
      t = GetTime() - t;
      iter = 2*iter;
@@ -172,8 +180,17 @@ int main()
 
    for (w = 0; w < 5; w++) {
      t = GetTime();
-     for (i = 0; i < iter; i++) {
-        for (r = 0; r < nprimes; r++) FFTFwd(AA[r].elts(), aa[r].elts(), L, r);
+     for (j = 0; j < iter; j++) {
+        for (r = 0; r < nprimes; r++) {
+           long *AAp = AA[r].elts();
+           long *aap = aa[r].elts();
+           long q = GetFFTPrime(r);
+           mulmod_t qinv = GetFFTPrimeInv(r);
+
+           FFTFwd(AAp, aap, L, r);
+           FFTRev1(AAp, aap, L, r);
+           for (i = 0; i < N; i++) AAp[i] = NormalizedMulMod(AAp[i], aap[i], q, qinv);
+        }
      }
      t = GetTime() - t;
      tvec[w] = t;

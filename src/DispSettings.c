@@ -93,6 +93,10 @@ int main()
    cout << "NTL_DISABLE_LONGDOUBLE\n";
 #endif
 
+#ifdef NTL_DISABLE_LONGLONG
+   cout << "NTL_DISABLE_LONGLONG\n";
+#endif
+
 
 
 cout << "\n";
@@ -110,10 +114,6 @@ cout << "Performance Options:\n";
 
 #ifdef NTL_AVOID_FLOAT
    cout << "NTL_AVOID_FLOAT\n";
-#endif
-
-#ifdef NTL_SPMM_UL
-   cout << "NTL_SPMM_UL\n";
 #endif
 
 

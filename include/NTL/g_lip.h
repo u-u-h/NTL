@@ -21,12 +21,58 @@ typedef _ntl_gbigint_is_opaque  _ntl_gbigint_body;
 
 #endif
 
-#if (NTL_LONGDOUBLE_OK && !defined(NTL_LEGACY_SP_MULMOD) && !defined(NTL_DISABLE_LONGDOUBLE))
-#define NTL_SP_NBITS NTL_WNBITS_MAX
-#define NTL_NSP_NBITS NTL_NBITS_MAX
+
+#if (defined(NTL_HAVE_LL_TYPE) && !defined(NTL_LEGACY_SP_MULMOD) && !defined(NTL_DISABLE_LONGLONG)) 
+
+#define NTL_LONGLONG_SP_MULMOD
+
+// on 64 bit machines, hold NTL_SP_NBITS to 60 bits,
+// as certain operations (in particular, TBL_REM in g_lip_impl.h)
+// are a bit faster
+
+
+#if (!defined(NTL_MAXIMIZE_SP_NBITS) && NTL_BITS_PER_LONG >= 64)
+#define NTL_SP_NBITS (NTL_BITS_PER_LONG-4)
 #else
+#define NTL_SP_NBITS (NTL_BITS_PER_LONG-2)
+#endif
+
+
+#define NTL_NSP_NBITS NTL_NBITS_MAX
+
+#if (NTL_NSP_NBITS > NTL_SP_NBITS)
+#undef NTL_NSP_NBITS
+#define NTL_NSP_NBITS NTL_SP_NBITS
+#endif
+
+
+#elif (NTL_LONGDOUBLE_OK && !defined(NTL_LEGACY_SP_MULMOD) && !defined(NTL_DISABLE_LONGDOUBLE))
+
+#define NTL_LONGDOUBLE_SP_MULMOD
+
+#define NTL_SP_NBITS NTL_WNBITS_MAX
+
+// on 64 bit machines, hold NTL_SP_NBITS to 60 bits (see above)
+
+#if (!defined(NTL_MAXIMIZE_SP_NBITS) && NTL_BITS_PER_LONG >= 64 && NTL_SP_NBITS > NTL_BITS_PER_LONG-4)
+#undef NTL_SP_NBITS
+#define NTL_SP_NBITS (NTL_BITS_PER_LONG-4)
+#endif
+
+#define NTL_NSP_NBITS NTL_NBITS_MAX
+#if (NTL_NSP_NBITS > NTL_SP_NBITS)
+#undef NTL_NSP_NBITS
+#define NTL_NSP_NBITS NTL_SP_NBITS
+#endif
+
+
+#else
+
+
 #define NTL_SP_NBITS NTL_NBITS_MAX
 #define NTL_NSP_NBITS NTL_NBITS_MAX
+
+
 #endif
 
 #define NTL_WSP_NBITS (NTL_BITS_PER_LONG-2)

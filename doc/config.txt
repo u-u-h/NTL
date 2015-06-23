@@ -271,11 +271,11 @@ NTL_X86_FIX=off
 NTL_NO_X86_FIX=off
 NTL_NO_INIT_TRANS=off
 NTL_DISABLE_LONGDOUBLE=off
+NTL_DISABLE_LONGLONG=off
 
 WIZARD=on
 NTL_LONG_LONG=off
 NTL_AVOID_FLOAT=off
-NTL_SPMM_UL=off
 NTL_SPMM_ULL=off
 NTL_SPMM_ASM=off
 NTL_FFT_BIGTAB=off
@@ -481,8 +481,13 @@ NTL_NO_INIT_TRANS=off
 
 NTL_DISABLE_LONGDOUBLE=off
 
-# disables use of the long double data type (in single-precision
-# MulMod implementation and elsewhere).  
+# Explicitly disables us of long double arithmetic in the 
+# single-precision modular arithmetic routines
+
+NTL_DISABLE_LONGLONG=off
+
+# Explicitly disables us of long long arithmetic in the 
+# single-precision modular arithmetic routines
 
 
 
@@ -521,20 +526,10 @@ NTL_AVOID_FLOAT=off
 # Note that at most one of NTL_LONG_LONG and NTL_AVOID_FLOAT may be set.
 
 
-NTL_SPMM_UL=off
-
-# On machines with slow floating point or---more comminly---slow int/float
-# conversions, this flag can lead to faster single-precision multiplication
-# with preconditioning (see MulModPrecon in the ZZ module).
-# This sounds esoteric, but it is actually important.
-
-
 NTL_SPMM_ULL=off
 
-# Similar to NTL_SPMM_UL, but relies on double-word unsigned multiplication.
-# This is (usually) done using the type 'unsigned long long',
-# but you can set the variable NTL_UNSIGNED_LONG_LONG_TYPE to
-# override the default.
+# Implement the MulModPrecon code using "unsigned long long"
+# (or specify NTL_UNSIGNED_LONG_LONG_TYPE to override the default).
 
 
 NTL_SPMM_ASM=off

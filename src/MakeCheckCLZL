@@ -1,0 +1,24 @@
+
+echo "Checking for __builtin_clzl"
+
+cp ../include/NTL/have_builtin_clzl_no.h ../include/NTL/have_builtin_clzl.h
+
+sh RemoveProg CheckCLZL
+echo $1 -o CheckCLZL CheckCLZL.c CheckCLZLAux.c $2
+$1 -o CheckCLZL CheckCLZL.c CheckCLZLAux.c $2
+
+if test -f CheckCLZL
+then
+   if ./CheckCLZL
+   then
+      echo "have __builtin_clzl"
+      cp ../include/NTL/have_builtin_clzl_yes.h ../include/NTL/have_builtin_clzl.h
+      sh RemoveProg CheckCLZL
+      exit 0
+   fi
+fi
+
+echo "DO NOT have __builtin__clzl"
+sh RemoveProg CheckCLZL
+exit 0
+

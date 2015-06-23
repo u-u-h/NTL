@@ -4565,6 +4565,7 @@ class _ntl_rem_struct_tbl : public _ntl_rem_struct {
 public:
    long n;
    UniqueArray<long> primes;
+   UniqueArray<mp_limb_t> inv_primes;
    Unique2DArray<mp_limb_t> tbl;
 
    void eval(long *x, _ntl_gbigint a, _ntl_tmp_vec *tmp_vec);
@@ -4582,11 +4583,10 @@ _ntl_rem_struct *_ntl_rem_struct_build(long n, _ntl_gbigint modulus, long (*p)(l
 #ifdef NTL_TBL_REM
    if (n <= 800
           && sizeof(NTL_ULL_TYPE) == 2*sizeof(long) 
-          && NTL_ZZ_NBITS == NTL_BITS_PER_LONG
-          && SIZE(modulus) >= 4) { 
-
+          && NTL_ZZ_NBITS == NTL_BITS_PER_LONG) {
 
       UniqueArray<long> q;
+      UniqueArray<mp_limb_t> inv_primes;
       Unique2DArray<mp_limb_t> tbl;
       long i, j;
       long qq, t, t1;
@@ -4595,6 +4595,10 @@ _ntl_rem_struct *_ntl_rem_struct_build(long n, _ntl_gbigint modulus, long (*p)(l
       q.SetLength(n);
       for (i = 0; i < n; i++)
          q[i] = p(i);
+
+      inv_primes.SetLength(n);
+      for (i = 0; i < n; i++) 
+         inv_primes[i] = (unsigned long) ( (((NTL_ULL_TYPE) 1) << (NTL_SP_NBITS+NTL_BITS_PER_LONG)) / ((NTL_ULL_TYPE) q[i]) );
 
 
       tbl.SetDims(n, sz);
@@ -4619,6 +4623,7 @@ _ntl_rem_struct *_ntl_rem_struct_build(long n, _ntl_gbigint modulus, long (*p)(l
  
       R->n = n;
       R->primes.move(q);
+      R->inv_primes.move(inv_primes);
       R->tbl.move(tbl);
 
       return R.release();
@@ -4863,91 +4868,224 @@ _ntl_tmp_vec *_ntl_rem_struct_medium::fetch()
    return res.release();
 }
 
+
+
+
 #ifdef NTL_TBL_REM
 
-// DIRT: won't work if GMP has nails
+static inline 
+mp_limb_t tbl_red_21(mp_limb_t hi, mp_limb_t lo, long d, mp_limb_t dinv)
+{
+   unsigned long H = (hi << (NTL_BITS_PER_LONG-NTL_SP_NBITS)) | (lo >> NTL_SP_NBITS);
+   unsigned long Q = MulHiUL(H, dinv) + H;
+   unsigned long rr = lo - Q*cast_unsigned(d); // rr in [0..4*d)
+   long r = sp_CorrectExcess(rr, 2*d); // r in [0..2*d)
+   r = sp_CorrectExcess(r, d);
+   return r;
+}
 
+static inline
+mp_limb_t tbl_red_n1(const mp_limb_t *x, long n, long d, mp_limb_t dinv)
+{
+   mp_limb_t carry = 0;
+   long i;
+   for (i = n-1; i >= 0; i--) 
+      carry = tbl_red_21(carry, x[i], d, dinv);
+   return carry;
+} 
+
+// NOTE: tbl_red_n1 playes the same role as mpn_mod_1.
+// It assumes that the modulus is d is normalized, i.e.,
+// has exactly NTL_SP_NBITS bits.  This will be the case for 
+// the FFT primes that are used.
+
+
+#if (NTL_SP_NBITS == NTL_BITS_PER_LONG-2)
+
+// special case, some loop unrolling: slightly faster
+
+
+// DIRT: won't work if GMP has nails
 void _ntl_rem_struct_tbl::eval(long *x, _ntl_gbigint a, 
                                  _ntl_tmp_vec *generic_tmp_vec)
 {
-   long i, j, sa;
-   mp_limb_t *adata, *tp;
-   NTL_ULL_TYPE acc;
-
    if (ZEROP(a)) {
+      long i;
       for (i = 0; i < n; i++) x[i] = 0;
       return;
    }
 
-   sa = SIZE(a);
-   adata = DATA(a);
+   long sa = SIZE(a);
+   mp_limb_t *adata = DATA(a);
 
-   const long Bnd =  1L << (NTL_BITS_PER_LONG-NTL_SP_NBITS);
-
-   if (sa <= Bnd) {
+   if (sa <= 4) {
+      long i;
       for (i = 0; i < n; i++) {
-         tp = tbl[i];
-
-         acc = adata[0];
-
+         mp_limb_t *tp = tbl[i]; 
+         NTL_ULL_TYPE acc = adata[0];
+         long j;
          for (j = 1; j < sa; j++)
             acc += ((NTL_ULL_TYPE) adata[j]) * ((NTL_ULL_TYPE) tp[j]);
 
          mp_limb_t accvec[2];
          accvec[0] = acc;
          accvec[1] = acc >> NTL_ZZ_NBITS;
-         x[i] = mpn_mod_1(accvec, 2, primes[i]);
+         x[i] = tbl_red_n1(accvec, 2, primes[i], inv_primes[i]);
       }
    }
    else {
+      long i;
       for (i = 0; i < n; i++) {
-         tp = tbl[i];
+         mp_limb_t *ap = adata;
+         mp_limb_t *tp = tbl[i]; 
 
-         acc = adata[0];
+         NTL_ULL_TYPE acc21;
+         mp_limb_t acc0;
 
-         for (j = 1; j < Bnd; j++) {
-            acc += ((NTL_ULL_TYPE) adata[j]) * ((NTL_ULL_TYPE) tp[j]);
+         {
+            NTL_ULL_TYPE sum = ap[0];
+            sum += ((NTL_ULL_TYPE) ap[1]) * ((NTL_ULL_TYPE) tp[1]);
+            sum += ((NTL_ULL_TYPE) ap[2]) * ((NTL_ULL_TYPE) tp[2]);
+            sum += ((NTL_ULL_TYPE) ap[3]) * ((NTL_ULL_TYPE) tp[3]);
+
+            acc21 = sum >> NTL_BITS_PER_LONG;
+            acc0 = sum;
+         }
+
+         long m;
+         for (m = sa-4, ap += 4, tp += 4; m >= 4; m -= 4, ap += 4, tp += 4) {
+            NTL_ULL_TYPE sum = ((NTL_ULL_TYPE) ap[0]) * ((NTL_ULL_TYPE) tp[0]);
+            sum += ((NTL_ULL_TYPE) ap[1]) * ((NTL_ULL_TYPE) tp[1]);
+            sum += ((NTL_ULL_TYPE) ap[2]) * ((NTL_ULL_TYPE) tp[2]);
+            sum += ((NTL_ULL_TYPE) ap[3]) * ((NTL_ULL_TYPE) tp[3]);
+
+            mp_limb_t sum1 = sum >> NTL_BITS_PER_LONG;
+            mp_limb_t sum0 = sum;
+            NTL_ULL_TYPE carry_acc0 = ((NTL_ULL_TYPE) acc0) + ((NTL_ULL_TYPE) sum0);
+            mp_limb_t carry = carry_acc0 >> NTL_BITS_PER_LONG;
+            acc0 = carry_acc0;
+            NTL_ULL_TYPE x = ((NTL_ULL_TYPE) sum1) + ((NTL_ULL_TYPE) carry);
+            acc21 += x;
+         }
+
+         if (m > 0) {
+            NTL_ULL_TYPE sum = ((NTL_ULL_TYPE) ap[0]) * ((NTL_ULL_TYPE) tp[0]);
+            for (m--, ap++, tp++; m > 0; m--, ap++, tp++)
+               sum += ((NTL_ULL_TYPE) ap[0]) * ((NTL_ULL_TYPE) tp[0]);
+
+            mp_limb_t sum1 = sum >> NTL_BITS_PER_LONG;
+            mp_limb_t sum0 = sum;
+            NTL_ULL_TYPE carry_acc0 = ((NTL_ULL_TYPE) acc0) + ((NTL_ULL_TYPE) sum0);
+            mp_limb_t carry = carry_acc0 >> NTL_BITS_PER_LONG;
+            acc0 = carry_acc0;
+            NTL_ULL_TYPE x = ((NTL_ULL_TYPE) sum1) + ((NTL_ULL_TYPE) carry);
+            acc21 += x;
          }
 
          mp_limb_t accvec[3];
+         accvec[0] = acc0;
+         accvec[1] = acc21;
+         accvec[2] = acc21 >> NTL_BITS_PER_LONG;
+         x[i] = tbl_red_n1(accvec, 3, primes[i], inv_primes[i]);
+      }
+   }
+}
+
+#else
+
+// General case: no loop unrolling
+
+// DIRT: won't work if GMP has nails
+void _ntl_rem_struct_tbl::eval(long *x, _ntl_gbigint a, 
+                                 _ntl_tmp_vec *generic_tmp_vec)
+{
+   if (ZEROP(a)) {
+      long i;
+      for (i = 0; i < n; i++) x[i] = 0;
+      return;
+   }
+
+   long sa = SIZE(a);
+   mp_limb_t *adata = DATA(a);
+
+   const long Bnd =  1L << (NTL_BITS_PER_LONG-NTL_SP_NBITS);
+
+   if (sa <= Bnd) {
+      long i;
+      for (i = 0; i < n; i++) {
+         mp_limb_t *tp = tbl[i]; 
+         NTL_ULL_TYPE acc = adata[0];
+         long j;
+         for (j = 1; j < sa; j++)
+            acc += ((NTL_ULL_TYPE) adata[j]) * ((NTL_ULL_TYPE) tp[j]);
+
+         mp_limb_t accvec[2];
          accvec[0] = acc;
          accvec[1] = acc >> NTL_ZZ_NBITS;
-         accvec[2] = 0;
+         x[i] = tbl_red_n1(accvec, 2, primes[i], inv_primes[i]);
+      }
+   }
+   else {
+      long i;
+      for (i = 0; i < n; i++) {
+         mp_limb_t *ap = adata;
+         mp_limb_t *tp = tbl[i]; 
 
-         while (j < sa) {
-            long NextStop = j + Bnd;
-            if (NextStop > sa) NextStop = sa;
+         NTL_ULL_TYPE acc21;
+         mp_limb_t acc0;
 
-            acc = 0;
-            for (; j < NextStop; j++) {
-               acc += ((NTL_ULL_TYPE) adata[j]) * ((NTL_ULL_TYPE) tp[j]);
-            }
+         {
+            NTL_ULL_TYPE sum = ap[0];
+            for (long j = 1; j < Bnd; j++)
+               sum += ((NTL_ULL_TYPE) ap[j]) * ((NTL_ULL_TYPE) tp[j]);
 
-            mp_limb_t accvec1[2];
-            accvec1[0] = acc;
-            accvec1[1] = acc >> NTL_ZZ_NBITS;
-
-#if 1
-            // accvec += accvec1
-            // this version seems marginally faster
-            mp_limb_t carry0, carry1;
-            accvec[0] += accvec1[0];
-            carry0 = (accvec[0] < accvec1[0]);
-            accvec[1] += accvec1[1];
-            carry1 = (accvec[1] < accvec1[1]);
-            accvec[1] += carry0;
-            accvec[2] += carry1 + (accvec[1] < carry0);
-#else
-            accvec[2] += mpn_add_n(accvec, accvec, accvec1, 2);
-#endif
+            acc21 = sum >> NTL_BITS_PER_LONG;
+            acc0 = sum;
          }
 
-         x[i] = mpn_mod_1(accvec, 3, primes[i]);
+         long m;
+         for (m = sa-Bnd, ap += Bnd, tp += Bnd; m >= Bnd; m -= Bnd, ap += Bnd, tp += Bnd) {
+            NTL_ULL_TYPE sum = ((NTL_ULL_TYPE) ap[0]) * ((NTL_ULL_TYPE) tp[0]);
+            for (long j = 1; j < Bnd; j++)
+               sum += ((NTL_ULL_TYPE) ap[j]) * ((NTL_ULL_TYPE) tp[j]);
+
+            mp_limb_t sum1 = sum >> NTL_BITS_PER_LONG;
+            mp_limb_t sum0 = sum;
+            NTL_ULL_TYPE carry_acc0 = ((NTL_ULL_TYPE) acc0) + ((NTL_ULL_TYPE) sum0);
+            mp_limb_t carry = carry_acc0 >> NTL_BITS_PER_LONG;
+            acc0 = carry_acc0;
+            NTL_ULL_TYPE x = ((NTL_ULL_TYPE) sum1) + ((NTL_ULL_TYPE) carry);
+            acc21 += x;
+         }
+
+         if (m > 0) {
+            NTL_ULL_TYPE sum = ((NTL_ULL_TYPE) ap[0]) * ((NTL_ULL_TYPE) tp[0]);
+            for (m--, ap++, tp++; m > 0; m--, ap++, tp++)
+               sum += ((NTL_ULL_TYPE) ap[0]) * ((NTL_ULL_TYPE) tp[0]);
+
+            mp_limb_t sum1 = sum >> NTL_BITS_PER_LONG;
+            mp_limb_t sum0 = sum;
+            NTL_ULL_TYPE carry_acc0 = ((NTL_ULL_TYPE) acc0) + ((NTL_ULL_TYPE) sum0);
+            mp_limb_t carry = carry_acc0 >> NTL_BITS_PER_LONG;
+            acc0 = carry_acc0;
+            NTL_ULL_TYPE x = ((NTL_ULL_TYPE) sum1) + ((NTL_ULL_TYPE) carry);
+            acc21 += x;
+         }
+
+         mp_limb_t accvec[3];
+         accvec[0] = acc0;
+         accvec[1] = acc21;
+         accvec[2] = acc21 >> NTL_BITS_PER_LONG;
+         x[i] = tbl_red_n1(accvec, 3, primes[i], inv_primes[i]);
       }
    }
 }
 
 #endif
+
+
+#endif
+
 
 void _ntl_rem_struct_basic::eval(long *x, _ntl_gbigint a, 
                                  _ntl_tmp_vec *generic_tmp_vec)

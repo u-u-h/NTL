@@ -1036,18 +1036,15 @@ int main()
 
    if (nbits % 2 != 0) nbits--;
 
-   // hold to at most 60 bits on 64-bit machines
-   if (bpl >= 64 && nbits > bpl-4) nbits = bpl-4;
-
    /*
-    * Set wnbits = min(bpl-2, ldp-3) [and even]
+    * Set wnbits = min(bpl-2, ldp-2) [and even]
     */
 
    if (ldp) {
-      if (bpl-2 < ldp-3)
+      if (bpl-2 < ldp-2)
          wnbits = bpl-2;
       else
-         wnbits = ldp-3;
+         wnbits = ldp-2;
 
       if (wnbits % 2 != 0) wnbits--;
    }
@@ -1055,22 +1052,9 @@ int main()
       wnbits = nbits;
    }
 
-   // hold to at most 60 bits on 64-bit machines
-   if (bpl >= 64 && wnbits > bpl-4) wnbits = bpl-4;
-
    if (wnbits <= nbits) ldp = 0;
    // disable long doubles if it doesn't increase nbits...
    // (for example, on 32-bit machines)
-
-   // NOTE:  on x86-64 platforms, the above logic will yield
-   // 60-bit single-precision arithmetic.
-   // We could have set wnbit = min(bpl-2, ldp-2), which
-   // would work assuming long doubles have correct rounding.
-   // On x86-64 platforms, this would yield 62-bit single-precision
-   // arithmetic.  I found experimentally that 62-bit 
-   // arithmetic does indeed work, but makes certain operations slower:
-   // ZZ_pX arithmetic in particular seems slower, probably due to 
-   // slower TBL_REM in g_lip_impl.h.
 
    /*
     * That's it!  All tests have passed.

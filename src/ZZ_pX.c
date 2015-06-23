@@ -1696,7 +1696,7 @@ void mul(FFTRep& z, const FFTRep& x, const FFTRep& y)
       mulmod_t qinv = GetFFTPrimeInv(i);
 
       for (j = 0; j < n; j++)
-         zp[j] = MulMod(xp[j], yp[j], q, qinv);
+         zp[j] = NormalizedMulMod(xp[j], yp[j], q, qinv);
    }
 
 }

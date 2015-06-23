@@ -301,10 +301,22 @@ using the configure script.
 #if @{NTL_DISABLE_LONGDOUBLE}
 #define NTL_DISABLE_LONGDOUBLE
 
-/* Explicitly disables us of long double arithmetic.
+/* Explicitly disables us of long double arithmetic in the 
+ * single-precision modular arithmetic routines
  */
 
 #endif
+
+
+#if @{NTL_DISABLE_LONGLONG}
+#define NTL_DISABLE_LONGLONG
+
+/* Explicitly disables us of long long arithmetic in the 
+ * single-precision modular arithmetic routines
+ */
+
+#endif
+
 
 
 /*************************************************************************
@@ -358,9 +370,9 @@ using the configure script.
 #endif
 
 
-/* There are four strategies to implmement single-precision
+/* There are three strategies to implmement single-precision
  * modular multiplication with precondinition (see the MulModPrecon
- * function in the ZZ module): the default, NTL_SPMM_UL, and NTL_SPMM_ULL,
+ * function in the ZZ module): the default, and NTL_SPMM_ULL,
  * and NTL_SPMM_ASM.
  * This plays a crucial role in the  "small prime FFT" used to 
  * implement polynomial arithmetic, and in other CRT-based methods 
@@ -369,22 +381,11 @@ using the configure script.
  */
 
 
-#if @{NTL_SPMM_UL}
-#define NTL_SPMM_UL
 
-/*    The default MulModPrecon implementation uses a mix of
- *    int and float arithmetic, which may be slow on certain machines.
- *    This flag causes an "all integer" implementation to be used.
- *    It is entirely portable.
- *    To re-build after changing this flag: rm *.o; make ntl.a
- */
-
-
-
-#elif @{NTL_SPMM_ULL}
+#if @{NTL_SPMM_ULL}
 #define NTL_SPMM_ULL
 
-/*    Like this previous flag, this also causes an "all integer"
+/*    This also causes an "all integer"
  *    implementation of MulModPrecon to be used.
  *    It us usually a faster implementation,
  *    but it is not enturely portable.
@@ -397,7 +398,7 @@ using the configure script.
 #elif @{NTL_SPMM_ASM}
 #define NTL_SPMM_ASM
 
-/*    Like this previous two flag, this also causes an "all integer"
+/*    Like this previous flag, this also causes an "all integer"
  *    implementation of MulModPrecon to be used.
  *    It relies assembler code to do double-word unsigned multiplication.
  *    This is only supported on a select mechines under GCC. 

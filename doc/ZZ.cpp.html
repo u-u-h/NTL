@@ -419,6 +419,8 @@ mulmod_precon_t PrepMulModPrecon(<font color="#008b00"><b>long</b></font>&nbsp;b
 <font color="#0000ed"><i>// bninv = MulModPrecon(b, n)</i></font><br>
 <br>
 <br>
+<font color="#0000ed"><i>// The following is provided for lagacy support, but is not generally </i></font><br>
+<font color="#0000ed"><i>// recommended:</i></font><br>
 <br>
 <font color="#008b00"><b>long</b></font>&nbsp;MulDivRem(<font color="#008b00"><b>long</b></font>&amp; q, <font color="#008b00"><b>long</b></font>&nbsp;a, <font color="#008b00"><b>long</b></font>&nbsp;b, <font color="#008b00"><b>long</b></font>&nbsp;n, muldivrem_t bninv);<br>
 <font color="#0000ed"><i>// return (a*b)%n, set q = (a*b)/n.&nbsp;&nbsp;</i></font><br>
@@ -446,50 +448,65 @@ mulmod_precon_t PrepMulModPrecon(<font color="#008b00"><b>long</b></font>&nbsp;b
 <font color="#0000ed"><i>//</i></font><br>
 <font color="#0000ed"><i>// Compatibility notes:</i></font><br>
 <font color="#0000ed"><i>//</i></font><br>
-<font color="#0000ed"><i>// The types mulmod_t and muldivrem_t were introduced in NTL v9.0,</i></font><br>
-<font color="#0000ed"><i>// as were the functions PrepMulMod and PrepMulDivRem.</i></font><br>
-<font color="#0000ed"><i>// Prior to this, the built-in type &quot;double&quot; played the role of these</i></font><br>
-<font color="#0000ed"><i>// types, and the user was expected to compute PrepMulMod(n) as 1/double(n)</i></font><br>
-<font color="#0000ed"><i>// and PrepMulDivRem(b, n) as double(b)/double(n).</i></font><br>
+<font color="#0000ed"><i>// The types mulmod_t and muldivrem_t were introduced in NTL v9.0, as were the</i></font><br>
+<font color="#0000ed"><i>// functions PrepMulMod and PrepMulDivRem.&nbsp;&nbsp;Prior to this, the built-in type</i></font><br>
+<font color="#0000ed"><i>// &quot;double&quot; played the role of these types, and the user was expected to</i></font><br>
+<font color="#0000ed"><i>// compute PrepMulMod(n) as 1/double(n) and PrepMulDivRem(b, n) as</i></font><br>
+<font color="#0000ed"><i>// double(b)/double(n).</i></font><br>
 <font color="#0000ed"><i>// </i></font><br>
 <font color="#0000ed"><i>// By abstracting these types, NTL is able to exploit a wider variety of</i></font><br>
-<font color="#0000ed"><i>// implementation strategies.&nbsp;&nbsp;Some old client code may break, but the</i></font><br>
-<font color="#0000ed"><i>// compiler will easily find the code that needs to be updated,</i></font><br>
-<font color="#0000ed"><i>// and the updates are quite mechanical (unless the old code implicitly</i></font><br>
-<font color="#0000ed"><i>// made use of the assumption that NTL_SP_NBITS &lt;= NTL_DOUBLE_PRECISION-3).</i></font><br>
+<font color="#0000ed"><i>// implementation strategies.&nbsp;&nbsp;Some old client code may break, but the compiler</i></font><br>
+<font color="#0000ed"><i>// will easily find the code that needs to be updated, and the updates are</i></font><br>
+<font color="#0000ed"><i>// quite mechanical (unless the old code implicitly made use of the assumption</i></font><br>
+<font color="#0000ed"><i>// that NTL_SP_NBITS &lt;= NTL_DOUBLE_PRECISION-3).</i></font><br>
 <font color="#0000ed"><i>//</i></font><br>
-<font color="#0000ed"><i>// It is highly recommended that old client codes be updated.</i></font><br>
-<font color="#0000ed"><i>// However, one may build NTL with the configuration option </i></font><br>
-<font color="#0000ed"><i>// NTL_LEGACY_SP_MULMOD=on, which will cause the interfaces and </i></font><br>
-<font color="#0000ed"><i>// implementations to revert to their pre-v9.0 definitions.&nbsp;&nbsp;</i></font><br>
-<font color="#0000ed"><i>// This option will also make the following</i></font><br>
-<font color="#0000ed"><i>// (obslete) function visible:</i></font><br>
+<font color="#0000ed"><i>// It is highly recommended that old client codes be updated.&nbsp;&nbsp;However, one may</i></font><br>
+<font color="#0000ed"><i>// build NTL with the configuration option NTL_LEGACY_SP_MULMOD=on, which will</i></font><br>
+<font color="#0000ed"><i>// cause the interfaces and implementations to revert to their pre-v9.0</i></font><br>
+<font color="#0000ed"><i>// definitions.&nbsp;&nbsp;This option will also make the following (obslete) function</i></font><br>
+<font color="#0000ed"><i>// visible:</i></font><br>
 <br>
 &nbsp;&nbsp;&nbsp;&nbsp;<font color="#008b00"><b>long</b></font>&nbsp;MulMod2(<font color="#008b00"><b>long</b></font>&nbsp;a, <font color="#008b00"><b>long</b></font>&nbsp;b, <font color="#008b00"><b>long</b></font>&nbsp;n, <font color="#008b00"><b>double</b></font>&nbsp;bninv);<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<font color="#0000ed"><i>// return (a*b)%n.&nbsp;&nbsp;bninv = ((double) b)/((double) n).&nbsp;&nbsp;This is faster</i></font><br>
 &nbsp;&nbsp;&nbsp;&nbsp;<font color="#0000ed"><i>// if both n and b are fixed for many multiplications.</i></font><br>
 &nbsp;&nbsp;&nbsp;&nbsp;<font color="#0000ed"><i>// Note: This is OBSOLETE -- use MulModPrecon.</i></font><br>
 <br>
-<font color="#0000ed"><i>// Currently, this new interface allows 64-bit x86/GCC platforms to use 64-bit</i></font><br>
-<font color="#0000ed"><i>// floating point precision instead of 53-bit precision (using the x87 FPU</i></font><br>
-<font color="#0000ed"><i>// instructions).&nbsp;&nbsp;This allows single precision moduli to be 60 bits, rather</i></font><br>
-<font color="#0000ed"><i>// than 50 bits.&nbsp;&nbsp;While some operations may, in fact, be a bit slower, the most</i></font><br>
-<font color="#0000ed"><i>// important ones, like MulModPrecon, are not, and allowing larger moduli helps</i></font><br>
-<font color="#0000ed"><i>// speed up various Chinese-Remainder-based algorithms.&nbsp;&nbsp;Also, this strategy is</i></font><br>
-<font color="#0000ed"><i>// currently only employed when NTL is built using GMP.</i></font><br>
-<font color="#0000ed"><i>//</i></font><br>
-<font color="#0000ed"><i>// If you find long doubles problematic, then you may build NTL with the</i></font><br>
-<font color="#0000ed"><i>// configuration option NTL_DISABLE_LONGDOUBLE=on, which will revert to the old</i></font><br>
-<font color="#0000ed"><i>// 50-bit regime, while still maintaining the new, abstract interfaces. </i></font><br>
 <br>
-<font color="#0000ed"><i>// Future versions of NTL may implement yet other strategies for modular</i></font><br>
-<font color="#0000ed"><i>// arithmetic.&nbsp;&nbsp;Clients that use the new, abstract interface will automatically</i></font><br>
-<font color="#0000ed"><i>// beneifit from any such improvements to NTL.</i></font><br>
+<font color="#0000ed"><i>// As of v9.2 of NTL, this new interface allows for 60-bit moduli on most</i></font><br>
+<font color="#0000ed"><i>// 64-bit machines.&nbsp;&nbsp;The requirement is that a working 128-bit integer type is</i></font><br>
+<font color="#0000ed"><i>// available.&nbsp;&nbsp;For current versions of gcc, clang, and icc, this is available</i></font><br>
+<font color="#0000ed"><i>// vie the types __int128_t and __uint128_t.&nbsp;&nbsp;If this requirement is met (which</i></font><br>
+<font color="#0000ed"><i>// is verified during NTL installation), then a &quot;long long&quot; implementation for</i></font><br>
+<font color="#0000ed"><i>// MulMod is used.&nbsp;&nbsp;In versions 9.0 and 9.1 of NTL, a &quot;long double&quot;</i></font><br>
+<font color="#0000ed"><i>// implementation was introduced, which utilized the 80-bit extended double</i></font><br>
+<font color="#0000ed"><i>// precision hardware on x86 machines.&nbsp;&nbsp;This also allows for 60-bit moduli on</i></font><br>
+<font color="#0000ed"><i>// 64-bit machines.</i></font><br>
 <br>
-<font color="#0000ed"><i>// One can detect the new interface by testing if the macro NTL_HAVE_MULMOD_T</i></font><br>
-<font color="#0000ed"><i>// is defined.&nbsp;&nbsp;The following code can be used to make new-style NTL clients</i></font><br>
-<font color="#0000ed"><i>// work with either older (pre-9.0) versions of NTL or newer versions</i></font><br>
-<font color="#0000ed"><i>// (post-9.0):</i></font><br>
+<font color="#0000ed"><i>// If 128-bit integer types are not avalable, or if you build NTL with the</i></font><br>
+<font color="#0000ed"><i>// NTL_DISABLE_LONGLONG=on flag, NTL will attempt to use the extended double</i></font><br>
+<font color="#0000ed"><i>// precision hardware to still allow 60-bit moduli.&nbsp;&nbsp;If that is not possible,</i></font><br>
+<font color="#0000ed"><i>// or if you build NTL with the NTL_DISABLE_LONGDOUBLE=on flag, then NTL will</i></font><br>
+<font color="#0000ed"><i>// fall back to its &quot;classical&quot; implementation (pre-9.0) that relies on</i></font><br>
+<font color="#0000ed"><i>// double-precision arithmetic and imposes a 50-bit limit on moduli.&nbsp;&nbsp;</i></font><br>
+<br>
+<font color="#0000ed"><i>// Note that in on 64-bit machines, either the &quot;long long&quot; or &quot;long double&quot;</i></font><br>
+<font color="#0000ed"><i>// implementations could support 62-bit moduli, rather than 60-bit moduli.</i></font><br>
+<font color="#0000ed"><i>// However, the restriction to 60-bits speeds up a few things, and so seems</i></font><br>
+<font color="#0000ed"><i>// like a good trade off.&nbsp;&nbsp;This is subject to change in the future.</i></font><br>
+<br>
+<font color="#0000ed"><i>// Also note that all of these enhancements introduced since v9.0 are only</i></font><br>
+<font color="#0000ed"><i>// available to builds of NTL that use GMP.&nbsp;&nbsp;Builds that don't use GMP will</i></font><br>
+<font color="#0000ed"><i>// still be restricted to 50-bit moduli on 64-bit machines. </i></font><br>
+<br>
+<font color="#0000ed"><i>// On machines with 32-bit longs, moduli will be resricted to 30 bits,</i></font><br>
+<font color="#0000ed"><i>// regardless on the implementation, which will be based on &quot;long long&quot;</i></font><br>
+<font color="#0000ed"><i>// arithmetic (if a 64-bit integer type is available), or on double-precision</i></font><br>
+<font color="#0000ed"><i>// floating point (otherwise).</i></font><br>
+<br>
+<font color="#0000ed"><i>// One can detect the new (v9) interface by testing if the macro</i></font><br>
+<font color="#0000ed"><i>// NTL_HAVE_MULMOD_T is defined.&nbsp;&nbsp;The following code can be used to make</i></font><br>
+<font color="#0000ed"><i>// new-style NTL clients work with either older (pre-9.0) versions of NTL or</i></font><br>
+<font color="#0000ed"><i>// newer versions (post-9.0):</i></font><br>
 <br>
 <br>
 <font color="#1773cc">&nbsp;&nbsp; #ifndef NTL_HAVE_MULMOD_T</font><br>

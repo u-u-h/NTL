@@ -81,7 +81,6 @@ system("make InitSettings");
 
 'NTL_LONG_LONG'        => 0,
 'NTL_AVOID_FLOAT'      => 0,
-'NTL_SPMM_UL'          => 0,
 'NTL_SPMM_ULL'         => 0,
 'NTL_SPMM_ASM'         => 0,
 'NTL_TBL_REM'          => 0,
@@ -118,7 +117,7 @@ $cflag = "default";
 $Config{"NTL_FFT_BIGTAB"} = 1;
 
 foreach $aflag1 ("default", "NTL_FFT_LAZYMUL") {
-   foreach $bflag1 ("default", "NTL_SPMM_UL", "NTL_SPMM_ULL", "NTL_SPMM_ASM") {
+   foreach $bflag1 ("default", "NTL_SPMM_ULL", "NTL_SPMM_ASM") {
       foreach $cflag1 ("default", "NTL_AVOID_BRANCHING") {
 
 
@@ -127,7 +126,18 @@ foreach $aflag1 ("default", "NTL_FFT_LAZYMUL") {
          $Config{$cflag1} = 1;
 
 
-         if ($Config{"NTL_FFT_LAZYMUL"} && $Config{"NTL_SPMM_ULL"} == 0 && $Config{"NTL_SPMM_ASM"} == 0) {
+         if ($Config{"NTL_FFT_LAZYMUL"} == 1 && $Config{"NTL_LONGLONG_SP_MULMOD"} == 0 &&
+             $Config{"NTL_SPMM_ULL"} == 0 && $Config{"NTL_SPMM_ASM"} == 0) {
+
+               $Config{$aflag1} = 0;
+               $Config{$bflag1} = 0;
+               $Config{$cflag1} = 0;
+
+               print "skip: $aflag1 $bflag1 $cflag1\n";
+               next;
+         }
+
+         if ($Config{"NTL_LONGLONG_SP_MULMOD"} == 1 && $Config{"NTL_SPMM_ULL"} == 1) {
 
                $Config{$aflag1} = 0;
                $Config{$bflag1} = 0;

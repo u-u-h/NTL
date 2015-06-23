@@ -120,7 +120,19 @@ int main()
    cerr << "NTL_BITS_PER_LONG = " << NTL_BITS_PER_LONG << "\n";
    cerr << "NTL_ZZ_NBITS = " << NTL_ZZ_NBITS << "\n";
    cerr << "NTL_SP_NBITS = " << NTL_SP_NBITS << "\n";
+
+#ifdef NTL_LONGDOUBLE_SP_MULMOD
+   cerr << "NTL_LONGDOUBLE_SP_MULMOD\n";
+#endif
+
+#ifdef NTL_LONGLONG_SP_MULMOD
+   cerr << "NTL_LONGLONG_SP_MULMOD\n";
+#endif
+
    cerr << "\n";
+
+   
+
 
    cerr << "Basic Configuration Options:\n";
 
@@ -153,6 +165,11 @@ int main()
 
 #ifdef NTL_DISABLE_LONGDOUBLE
    cout << "NTL_DISABLE_LONGDOUBLE\n";
+#endif
+
+
+#ifdef NTL_DISABLE_LONGLONG
+   cout << "NTL_DISABLE_LONGLONG\n";
 #endif
 
 
@@ -224,10 +241,6 @@ cerr << "Performance Options:\n";
 
 #ifdef NTL_AVOID_FLOAT
    cerr << "NTL_AVOID_FLOAT\n";
-#endif
-
-#ifdef NTL_SPMM_UL
-   cerr << "NTL_SPMM_UL\n";
 #endif
 
 

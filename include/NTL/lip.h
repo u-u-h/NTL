@@ -2,8 +2,7 @@
 #ifndef NTL_g_lip__H
 #define NTL_g_lip__H
 
-#include <NTL/config.h>
-#include <NTL/mach_desc.h>
+#include <NTL/ctools.h>
 
 
 #ifdef NTL_GMP_LIP

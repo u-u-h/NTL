@@ -779,7 +779,6 @@ long operator!=(const Vec<T>& a, const Vec<T>& b)
 
 // conversions
 
-
 template<class T, class S>
 void conv(Vec<T>& x, const Vec<S>& a)
 {

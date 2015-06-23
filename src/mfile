@@ -194,9 +194,10 @@ IN15=$(IN14) vec_vec_GF2.h vec_vec_GF2E.h vec_vec_RR.h vec_vec_ZZ.h
 IN16=$(IN15) vec_vec_ZZ_p.h vec_vec_ZZ_pE.h vec_vec_long.h vec_vec_lzz_p.h
 IN17=$(IN16) vec_vec_lzz_pE.h vec_xdouble.h xdouble.h config.h version.h
 IN18=$(IN17) def_config.h new.h vec_ulong.h vec_vec_ulong.h c_lip.h g_lip.h
-IN19=$(IN18) SmartPtr.h Lazy.h LazyTable.h thread.h
+IN19=$(IN18) SmartPtr.h Lazy.h LazyTable.h thread.h 
+IN20=$(IN19) have_LL_no.h have_LL_yes.h have_builtin_clzl_no.h have_builtin_clzl_yes.h
 
-INCL=$(IN19)
+INCL=$(IN20)
 
 
 
@@ -219,7 +220,7 @@ TS = $(TS4)
 
 # scripts
 
-SCRIPTS1=MakeGetTime MakeGetPID TestScript dosify unixify RemoveProg 
+SCRIPTS1=MakeGetTime MakeGetPID MakeCheckCLZL MakeCheckLL TestScript dosify unixify RemoveProg 
 SCRIPTS2=$(SCRIPTS1) configure DoConfig mfile cfile ppscript
 
 SCRIPTS=$(SCRIPTS2)
@@ -227,10 +228,10 @@ SCRIPTS=$(SCRIPTS2)
 # auxilliary source
 
 MD=MakeDesc.c MakeDescAux.c newnames.c gen_gmp_aux.c CheckPCLMUL.c
-
 GT=GetTime1.c GetTime2.c GetTime3.c GetTime4.c GetTime5.c TestGetTime.c
-
 GP=GetPID1.c GetPID2.c TestGetPID.c
+CH=CheckCLZL.c CheckCLZLAux.c CheckLL.c CheckLLAux.c
+
 
 
 # documentation
@@ -293,7 +294,7 @@ PROGS = $(PROG3)
 
 # things to save to a tar file
 
-SFI1=makefile $(SRC) $(SINC) $(SCRIPTS) $(MD) $(GT) $(GP) $(TS) $(TD) mach_desc.win 
+SFI1=makefile $(SRC) $(SINC) $(SCRIPTS) $(MD) $(GT) $(GP) $(CH) $(TS) $(TD) mach_desc.win 
 SFI2=$(SFI1) MulTimeTest.c PolyTimeTest.c Poly1TimeTest.c GF2XTimeTest.c  
 SFI3=$(SFI2) InitSettings.c DispSettings.c  WizardAux Wizard def_makefile
 SFILES=$(SFI3)
@@ -337,11 +338,14 @@ setup1:
 	./MakeDesc
 	mv mach_desc.h ../include/NTL/mach_desc.h
 
-# setup2 generates the file GetTime.c and GetPID.c
+
+# setup2 does some dynamic checks for GetTime, GetPID, __builtin_clzl, and LL types 
 
 setup2:
 	sh MakeGetTime "$(LINK)" "$(LDLIBS)"
 	sh MakeGetPID  "$(LINK)" "$(LDLIBS)"
+	sh MakeCheckCLZL "$(LINK)" "$(LDLIBS)"
+	sh MakeCheckLL   "$(LINK)" "$(LDLIBS)"
 
 # setup3 generates the file ../include/NTL/gmp_aux.h
 # The file ../include/NTL/gmp_aux.h is included in ../include/NTL/lip.h
@@ -457,6 +461,8 @@ uninstall:
 
 clobber:	
 	rm -f ntl.a mach_desc.h ../include/NTL/mach_desc.h  GetTime.c GetPID.c
+	cp ../include/NTL/have_LL_no.h ../include/NTL/have_LL.h
+	cp ../include/NTL/have_builtin_clzl_no.h ../include/NTL/have_builtin_clzl.h
 	rm -f ../include/NTL/gmp_aux.h
 	sh RemoveProg $(PROGS) MakeDesc TestGetTime TestGetPID gen_gmp_aux
 	rm -f *.o

@@ -21,14 +21,14 @@ and other Platforms
 <p> <hr> <p>
 
 The WinNTL distribution of 
-NTL can be used on any Windows 95 or NT platform
-(but not on Windows 3.11 or earlier).
+NTL can be used on any Windows platform
+(Windows 95 or later).
 Actually, there is nothing Windows-specific about WinNTL.
 The source code is identical to the UNIX NTL distribution;
 only the packaging is slightly different, and no assumptions
 are made about the program development environment.
 Thus, it should be possible to install WinNTL on
-other operating systems (e.g., Macintosh, OS/2)
+other operating systems 
 with little difficulty.
 
 <p>
@@ -36,6 +36,31 @@ with little difficulty.
 since MAC OSX is essentially just a (rather funny) flavor of Unix,
 you will be much better served using the 
 <a href="tour-unix.html">Unix distribution</a>.
+
+<p>
+<b>Windows Users:</b>
+you should consider using a Unix emulation environment like
+<a href="http://www.mingw.org/">MinGW</a> 
+or <a href="https://www.cygwin.com/">Cygwin</a>, instead of 
+Microsoft development tools.
+Why?
+<ul>
+<li>
+MinGW uses gcc, which generally adheres closer to language
+standards and produces more efficient code that Microsoft's 
+compiler.
+<p><li>
+With MinGW, you can use NTL's 
+<a href="tour-unix.html">Unix distribution</a>,
+and the installation is almost entirely automatic:
+no pointing and clicking -- not much more 
+than <tt>./configure</tt> and <tt>make</tt>.
+You can also easily to install GMP 
+and run NTL's performance-tuning Wizard.
+These factors combined can make a hige difference in performance, 
+easily giving you a huge (10x or more) performance improvement.
+</ul>
+
 
 
 <p>
@@ -68,8 +93,6 @@ which can be accessed directly, or through the "tour".
 The directory "<tt>src</tt>"
 contains all of the source files for the library,
 all with "<tt>.cpp</tt>" extensions.
-The file "<tt>lip.cpp</tt>" can be compiled as a C source file
-(this can sometimes yield a marginal performance gain).
 
 <p>
 <li>
@@ -90,7 +113,7 @@ Platform dependent macros.
 In directory "<tt>include/NTL</tt>" there is a file called 
 "<tt>mach_desc.h</tt>",
 which contains all of the platform-dependent macro definitions.
-The default settings should be correct for any x86- or Pentium-based 
+The default settings should be correct for any 
 system running Windows; however, the correct definitions
 can depend on the compiler and run-time environment.
 Therefore, to be on the safe side,
@@ -116,68 +139,7 @@ Configuration flags.
 
 Also in directory "<tt>include/NTL</tt>" is a file called "<tt>config.h</tt>".
 You can edit this file to override some of NTL's default options 
-for <i>basic configuration</i> and <i>performance</i>.
-
-<p>
-
-<dl>
-<dt>
-<i>Basic configuration options.</i>
-<dd>
-Most of the these flags are rather esoteric and can be safely
-ignored.
-<p>
-
-One exception to this is the <tt>NTL_STD_CXX</tt>  flag
-(or perhaps just the <tt>NTL_PSTD_NNS</tt> flag) which
-you will want to unset if your compiler is too old
-to handle it.
-<a href="tour-stdcxx.html">Go here</a> for details.
-
-<p>
-
-Another exception are the flags to use GMP for potentially
-faster long integer arithmetic.
-See the <a href="tour-gmp.html">GMP</a> section for more details.
-Note that getting GMP to run on Windows is a pain in the neck.
-If you really want to use GMP, use Unix or Linux!
-
-<p>
-
-<dt>
-<i>Performance options.</i>
-<dd>
-These flags let you fine tune for best performance.
-(If you were using Unix, you could run a script that
-automatically selects the best settings for your platform.)
-
-
-<p>
-<i>TIP for Pentium platforms:</i> 
-<ul>
-<li>
-Users running 
-on a Pentium, or other x86-like processor,
-will almost surely want to set the <tt>NTL_LONG_LONG</tt> flag,
-or possibly the <tt>NTL_AVOID_FLOAT</tt> flag, in file <tt>config.h</tt>
-to get the best performance for long integer arithmetic.
-If you set either of these flags, you should also set the
-<tt>NTL_TBL_REM</tt> flag as well, to get the best 
-performance for <tt>ZZ_pX</tt> arithmetic.
-You might also want to set the <tt>NTL_SPMM_ULL</tt> or <tt>NTL_SMPP_UL</tt>
-flags.
-
-<li>
-These flags can be useful on other platforms as well,
-especially on processors with slow int/float conversion.
-
-<li>
-The best thing is to experiment, and compile and run program <tt>QuickTest</tt>
-to see the impact on the running time of various basic operations.
-</ul>
-</dl>
-
-<p>
+for basic configuration and performance.
 Note that the file "<tt>def_config.h</tt>"
 contains a backup copy of the original <tt>config.h</tt> file.
 
@@ -253,81 +215,10 @@ you will certainly  want to compile everything with your
 compiler's code optimizer on.
 
 <p>
-For the benefit of those who must use Microsoft Visual C++ on Windows,
-here are some steps for compiling and using NTL.
-These steps work with MSVC++ v6.
-While these steps seem to do the job,
-there may be other steps that work better.
-
-The following steps may be used to build the library,
-and to build and run program <tt>QuickTest</tt>, as a simple
-<i>console application</i>, using the library.
-The instructions assume you have already 
-unzipped NTL into a directory <tt>c:\mystuff</tt>,
-and are running the MSVC++ Development Studio.
+Here a a <a href="https://www.youtube.com/watch?v=2xijP2xATPI&feature=youtu.be">link to a video</a> showing how NTL can be built using a Microsoft compiler.
+To me, it looks very complicated: I recommend MinGW or Cygwin.
 
 <p>
-I hope these instructions make some sense:
-I don't know a good language for accuratly describing the 
-particular pointing an clicking steps.
-
-<p>
-
-<pre>
-
-File -&gt; New -&gt; Projects 
-   project name: ntl
-   location[default]: c:\Program Files\Microsoft Visual Studio\MyProjects\ntl
-   Click on Win32 static library
-   Click on OK
-   pre-compiled headers[default]: no
-   MFC support[default]: no
-   Click on Finish
-   Click on OK
-
-Project -&gt; Add to Project -&gt; Files
-   select all files in c:\mystuff\WinNTL-xxx\src and click on OK.
-
-Project -&gt; Settings -&gt; C/C++ 
-   Category: Preprocessor.
-   Additional include directories: c:\mystuff\WinNTL-xxx\include.
-   Click on OK.
-
-Build -&gt; build ntl.lib
-
-File -&gt; New -&gt; Projects -&gt; Win32 Console Application
-   project name: test
-   location[default]: c:\Program Files\Microsoft Visual Studio\MyProjects\ntl
-   Click on Win32 Console Application
-   Click on OK
-   What kind of windows application...? [default]: An empty project
-   Click on Finish
-   Click on OK
-
-Project -&gt; Add to Project -&gt; Files
-   select the file c:\mystuff\WinNTL-xxx\tests\QuickTest.cpp
-   Click on OK
-
-Project -&gt; Add to Project -&gt; Files
-   select the file 
-      c:\Program Files\Microsoft Visual Studio\MyProjects\ntl\Debug\ntl.lib
-   Note: one must select Files of type: Library Files (.lib) to make this
-      file visible in the pop-up window.
-   Click on OK
-
-Project -&gt; Settings -&gt; C/C++ 
-   Category: Preprocessor.
-   Additional include directories: c:\mystuff\WinNTL-xxx\include.
-   Click on OK.
-
-Build -&gt; build test.exe
-
-Build -&gt; execute test.exe
-
-</pre>
-
-<p>
-<b>
 Further remarks.
 </b>
 <p>
@@ -349,24 +240,9 @@ and <tt>max</tt> functions in file <tt>tools.h</tt> that conflict
 with macro names in the MFC header files.
 Do not attempt to build the library with this macro defined -- only
 programs that use the library.
+Another solution is to define the macro <tt>NOMINMAX</tt>, which will
+tell the Microsoft compiler to not define min/max macros.
 
-<p>
-NTL has been successfully installed and tested 
-on Windows 95 platforms with both the 
-Microsoft and Borland compilers.
-
-<p>
-If you have installed the Unix tools from 
-<a href="http://www.cygnus.com">Cygnus</a>, then you can use the
-<a href="tour-unix.html">Unix</a> distribution of NTL.
-This distribution has been specially tailored to work smoothly
-with Cygnus tools.
-For many programmers,
-this is a much more comfortable and reliable program development environment
-than commercial systems like those from Microsoft and Borland.
-And moreover, these Unix tools are <i>free</i>.
-Of course, an even better approach is to install
-<a href="http://www.linux.org">Linux</a> on your PC.
 
 
 <p>

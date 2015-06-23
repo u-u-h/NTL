@@ -1,8 +1,7 @@
 
-#include <NTL/config.h>
+#include <NTL/ZZ.h>
 
-#include <iostream>
-using namespace std;
+NTL_CLIENT
 
 #define make_string_aux(x) #x
 #define make_string(x) make_string_aux(x)
@@ -47,6 +46,13 @@ int main()
    cout << "NTL_DISABLE_LONGDOUBLE=1\n";
 #else
    cout << "NTL_DISABLE_LONGDOUBLE=0\n";
+#endif
+
+
+#ifdef NTL_DISABLE_LONGLONG
+   cout << "NTL_DISABLE_LONGLONG=1\n";
+#else
+   cout << "NTL_DISABLE_LONGLONG=0\n";
 #endif
 
 
@@ -123,6 +129,14 @@ int main()
    cout << "NTL_RANGE_CHECK=1\n";
 #else
    cout << "NTL_RANGE_CHECK=0\n";
+#endif
+
+
+// the following is synthetically defined
+#ifdef NTL_LONGLONG_SP_MULMOD
+   cout << "NTL_LONGLONG_SP_MULMOD=1\n";
+#else
+   cout << "NTL_LONGLONG_SP_MULMOD=0\n";
 #endif
 
 

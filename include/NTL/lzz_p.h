@@ -26,6 +26,8 @@ public:
    long p;
    mulmod_t pinv;
 
+   sp_reduce_struct red_struct;
+
    FFTPrimeInfo* p_info; // non-null means we are directly using 
                          // an FFT prime
 
@@ -75,6 +77,16 @@ zz_pContext(INIT_USER_FFT_TYPE, long q);
 
 void save();
 void restore() const;
+
+
+// some hooks that are useful in helib...
+// FIXME: generalize these to other context classes
+// and document
+
+bool null() const { return ptr == 0; } 
+bool equals(const zz_pContext& other) const { return ptr == other.ptr; } 
+long modulus() const { return ptr->p; }
+
 
 };
 
@@ -183,8 +195,17 @@ void allocate() { }
 
 };
 
-zz_p to_zz_p(long a);
-void conv(zz_p& x, long a);
+inline
+zz_p to_zz_p(long a) 
+{
+   return zz_p(rem(a, zz_pInfo->p, zz_pInfo->red_struct), INIT_LOOP_HOLE);
+}
+
+inline
+void conv(zz_p& x, long a)
+{
+   x._zz_p__rep = rem(a, zz_pInfo->p, zz_pInfo->red_struct);
+}
 
 inline zz_p& zz_p::operator=(long a) { conv(*this, a); return *this; }
 

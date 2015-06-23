@@ -65,6 +65,7 @@ sub BadPCLMUL {
 'NTL_LEGACY_NO_NAMESPACE'  => 'off',
 'NTL_LEGACY_INPUT_ERROR'   => 'off',
 'NTL_DISABLE_LONGDOUBLE'  => 'off',
+'NTL_DISABLE_LONGLONG'  => 'off',
 'NTL_LEGACY_SP_MULMOD'  => 'off',
 'NTL_THREADS'           => 'off',
 'NTL_EXCEPTIONS'        => 'off',
@@ -76,7 +77,6 @@ sub BadPCLMUL {
 'NTL_AVOID_FLOAT'       => 'off',
 'NTL_LONG_LONG'         => 'off',
 'NTL_SPMM_ULL'          => 'off',
-'NTL_SPMM_UL'           => 'off',
 'NTL_SPMM_ASM'          => 'off',
 'NTL_AVOID_BRANCHING'   => 'off',
 'NTL_TBL_REM'           => 'off',
@@ -310,10 +310,9 @@ if ($ConfigSub{'NTL_AVOID_FLOAT'} + $ConfigSub{'NTL_LONG_LONG'} > 1) {
 }
 
 
-if ($ConfigSub{'NTL_SPMM_UL'} + $ConfigSub{'NTL_SPMM_ULL'} +
-    $ConfigSub{'NTL_SPMM_ASM'} > 1) {
+if ($ConfigSub{'NTL_SPMM_ULL'} + $ConfigSub{'NTL_SPMM_ASM'} > 1) {
 
-   die "Error: at most one of NTL_SPMM_UL, NTL_SPMM_ULL and NTL_SPMM_ASM may be on\n";
+   die "Error: at most one of NTL_SPMM_ULL and NTL_SPMM_ASM may be on\n";
 
 }
 

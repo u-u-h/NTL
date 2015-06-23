@@ -411,6 +411,8 @@ void VectorMulModPrecon(long k, long *x, const long *a, long b, long n,
 // bninv = MulModPrecon(b, n)
 
 
+// The following is provided for lagacy support, but is not generally 
+// recommended:
 
 long MulDivRem(long& q, long a, long b, long n, muldivrem_t bninv);
 // return (a*b)%n, set q = (a*b)/n.  
@@ -438,50 +440,65 @@ long MulDivRem(long& q, long a, long b, long n, muldivrem_t bninv);
 //
 // Compatibility notes:
 //
-// The types mulmod_t and muldivrem_t were introduced in NTL v9.0,
-// as were the functions PrepMulMod and PrepMulDivRem.
-// Prior to this, the built-in type "double" played the role of these
-// types, and the user was expected to compute PrepMulMod(n) as 1/double(n)
-// and PrepMulDivRem(b, n) as double(b)/double(n).
+// The types mulmod_t and muldivrem_t were introduced in NTL v9.0, as were the
+// functions PrepMulMod and PrepMulDivRem.  Prior to this, the built-in type
+// "double" played the role of these types, and the user was expected to
+// compute PrepMulMod(n) as 1/double(n) and PrepMulDivRem(b, n) as
+// double(b)/double(n).
 // 
 // By abstracting these types, NTL is able to exploit a wider variety of
-// implementation strategies.  Some old client code may break, but the
-// compiler will easily find the code that needs to be updated,
-// and the updates are quite mechanical (unless the old code implicitly
-// made use of the assumption that NTL_SP_NBITS <= NTL_DOUBLE_PRECISION-3).
+// implementation strategies.  Some old client code may break, but the compiler
+// will easily find the code that needs to be updated, and the updates are
+// quite mechanical (unless the old code implicitly made use of the assumption
+// that NTL_SP_NBITS <= NTL_DOUBLE_PRECISION-3).
 //
-// It is highly recommended that old client codes be updated.
-// However, one may build NTL with the configuration option 
-// NTL_LEGACY_SP_MULMOD=on, which will cause the interfaces and 
-// implementations to revert to their pre-v9.0 definitions.  
-// This option will also make the following
-// (obslete) function visible:
+// It is highly recommended that old client codes be updated.  However, one may
+// build NTL with the configuration option NTL_LEGACY_SP_MULMOD=on, which will
+// cause the interfaces and implementations to revert to their pre-v9.0
+// definitions.  This option will also make the following (obslete) function
+// visible:
 
     long MulMod2(long a, long b, long n, double bninv);
     // return (a*b)%n.  bninv = ((double) b)/((double) n).  This is faster
     // if both n and b are fixed for many multiplications.
     // Note: This is OBSOLETE -- use MulModPrecon.
 
-// Currently, this new interface allows 64-bit x86/GCC platforms to use 64-bit
-// floating point precision instead of 53-bit precision (using the x87 FPU
-// instructions).  This allows single precision moduli to be 60 bits, rather
-// than 50 bits.  While some operations may, in fact, be a bit slower, the most
-// important ones, like MulModPrecon, are not, and allowing larger moduli helps
-// speed up various Chinese-Remainder-based algorithms.  Also, this strategy is
-// currently only employed when NTL is built using GMP.
-//
-// If you find long doubles problematic, then you may build NTL with the
-// configuration option NTL_DISABLE_LONGDOUBLE=on, which will revert to the old
-// 50-bit regime, while still maintaining the new, abstract interfaces. 
 
-// Future versions of NTL may implement yet other strategies for modular
-// arithmetic.  Clients that use the new, abstract interface will automatically
-// beneifit from any such improvements to NTL.
+// As of v9.2 of NTL, this new interface allows for 60-bit moduli on most
+// 64-bit machines.  The requirement is that a working 128-bit integer type is
+// available.  For current versions of gcc, clang, and icc, this is available
+// vie the types __int128_t and __uint128_t.  If this requirement is met (which
+// is verified during NTL installation), then a "long long" implementation for
+// MulMod is used.  In versions 9.0 and 9.1 of NTL, a "long double"
+// implementation was introduced, which utilized the 80-bit extended double
+// precision hardware on x86 machines.  This also allows for 60-bit moduli on
+// 64-bit machines.
 
-// One can detect the new interface by testing if the macro NTL_HAVE_MULMOD_T
-// is defined.  The following code can be used to make new-style NTL clients
-// work with either older (pre-9.0) versions of NTL or newer versions
-// (post-9.0):
+// If 128-bit integer types are not avalable, or if you build NTL with the
+// NTL_DISABLE_LONGLONG=on flag, NTL will attempt to use the extended double
+// precision hardware to still allow 60-bit moduli.  If that is not possible,
+// or if you build NTL with the NTL_DISABLE_LONGDOUBLE=on flag, then NTL will
+// fall back to its "classical" implementation (pre-9.0) that relies on
+// double-precision arithmetic and imposes a 50-bit limit on moduli.  
+
+// Note that in on 64-bit machines, either the "long long" or "long double"
+// implementations could support 62-bit moduli, rather than 60-bit moduli.
+// However, the restriction to 60-bits speeds up a few things, and so seems
+// like a good trade off.  This is subject to change in the future.
+
+// Also note that all of these enhancements introduced since v9.0 are only
+// available to builds of NTL that use GMP.  Builds that don't use GMP will
+// still be restricted to 50-bit moduli on 64-bit machines. 
+
+// On machines with 32-bit longs, moduli will be resricted to 30 bits,
+// regardless on the implementation, which will be based on "long long"
+// arithmetic (if a 64-bit integer type is available), or on double-precision
+// floating point (otherwise).
+
+// One can detect the new (v9) interface by testing if the macro
+// NTL_HAVE_MULMOD_T is defined.  The following code can be used to make
+// new-style NTL clients work with either older (pre-9.0) versions of NTL or
+// newer versions (post-9.0):
 
 
    #ifndef NTL_HAVE_MULMOD_T
