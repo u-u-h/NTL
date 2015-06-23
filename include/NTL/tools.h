@@ -358,9 +358,11 @@ public:
    wide_double_impl_t data;
 
    wide_double() { }
-   explicit wide_double(long x) : data(x) { }
-   explicit wide_double(unsigned long x) : data(x) { }
-   explicit wide_double(wide_double_impl_t x) : data(x) { }
+
+   wide_double(const wide_double& x) : data(x.data) { }
+
+   template<class T>
+   explicit wide_double(const T& x) : data(x) { }
 
    operator wide_double_impl_t() const { return data; }
 
