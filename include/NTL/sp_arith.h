@@ -177,7 +177,8 @@ static inline long MulMod(long a, long b, long n)
 {
    long q, res;
 
-   q  = (long) ((((wide_double) a) * ((wide_double) b)) / ((wide_double) n)); 
+   q  = (long) (wide_double(a) * wide_double(b) * (wide_double(1L)/wide_double(n)));
+   // writing it this way lets the compiler hoist 1/n out of a loop
 
    res = cast_signed( cast_unsigned(a)*cast_unsigned(b) - 
                       cast_unsigned(q)*cast_unsigned(n) );
@@ -277,7 +278,8 @@ static inline long MulMod(long a, long b, long n)
    long q;
    unsigned long res;
 
-   q  = (long) ((((wide_double) a) * ((wide_double) b)) / ((wide_double) n)); 
+   q  = (long) (wide_double(a) * wide_double(b) * (wide_double(1L)/wide_double(n)));
+   // writing it this way lets the compiler hoist 1/n out of a loop
 
    res = ((unsigned long) a)*((unsigned long) b) - 
          ((unsigned long) q)*((unsigned long) n);
