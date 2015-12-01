@@ -240,7 +240,7 @@ CH=CheckCLZL.c CheckCLZLAux.c CheckLL.c CheckLLAux.c
 # documentation
 
 
-D01=copying.txt GF2.txt GF2E.txt GF2EX.txt GF2EXFactoring.txt GF2X.txt
+D01=copying.txt BasicThreadPool.txt GF2.txt GF2E.txt GF2EX.txt GF2EXFactoring.txt GF2X.txt
 D02=$(D01) GF2XFactoring.txt GF2XVec.txt HNF.txt Lazy.txt LazyTable.txt LLL.txt RR.txt SmartPtr.txt
 D03=$(D02) ZZ.txt ZZVec.txt ZZX.txt ZZXFactoring.txt ZZ_p.txt ZZ_pE.txt
 D04=$(D03) ZZ_pEX.txt ZZ_pEXFactoring.txt ZZ_pX.txt ZZ_pXFactoring.txt
@@ -279,7 +279,7 @@ HT05=lzz_pXFactoring.cpp.html mat_GF2.cpp.html mat_GF2E.cpp.html mat_RR.cpp.html
 HT06=mat_ZZ_pE.cpp.html mat_lzz_p.cpp.html mat_lzz_pE.cpp.html mat_poly_ZZ.cpp.html mat_poly_ZZ_p.cpp.html
 HT07=mat_poly_lzz_p.cpp.html matrix.cpp.html pair.cpp.html quad_float.cpp.html tools.cpp.html vec_GF2.cpp.html
 HT08=vec_GF2E.cpp.html vec_RR.cpp.html vec_ZZ.cpp.html vec_ZZ_p.cpp.html vec_ZZ_pE.cpp.html vec_lzz_p.cpp.html
-HT09=vec_lzz_pE.cpp.html vector.cpp.html version.cpp.html xdouble.cpp.html
+HT09=vec_lzz_pE.cpp.html vector.cpp.html version.cpp.html xdouble.cpp.html BasicThreadPool.cpp.html
 
 HTFILES=$(HT01) $(HT02) $(HT03) $(HT04) $(HT05) $(HT06) $(HT07) $(HT08) $(HT09)
 

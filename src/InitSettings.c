@@ -62,6 +62,13 @@ int main()
 #endif
 
 
+#ifdef NTL_MAXIMIZE_SP_NBITS
+   cout << "NTL_MAXIMIZE_SP_NBITS=1\n";
+#else
+   cout << "NTL_MAXIMIZE_SP_NBITS=0\n";
+#endif
+
+
 
 #ifdef NTL_GMP_LIP
    cout << "NTL_GMP_LIP=1\n";

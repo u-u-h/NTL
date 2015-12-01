@@ -285,6 +285,7 @@ NTL_NO_X86_FIX=off
 NTL_NO_INIT_TRANS=off
 NTL_DISABLE_LONGDOUBLE=off
 NTL_DISABLE_LONGLONG=off
+NTL_MAXIMIZE_SP_NBITS=off
 
 WIZARD=on
 NTL_LONG_LONG=off
@@ -501,6 +502,13 @@ NTL_DISABLE_LONGLONG=off
 
 # Explicitly disables us of long long arithmetic in the 
 # single-precision modular arithmetic routines
+
+NTL_MAXIMIZE_SP_NBITS=on
+
+# Allows for 62-bit single-precision moduli on 64-bit platforms.
+# By default, such moduli are restricted to 60 bits, which
+# usually gives *slightly* better performance across a range of
+# of parameters.
 
 
 

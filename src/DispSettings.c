@@ -101,6 +101,9 @@ int main()
    cout << "NTL_DISABLE_LONGLONG\n";
 #endif
 
+#ifdef NTL_MAXIMIZE_SP_NBITS
+   cout << "NTL_MAXIMIZE_SP_NBITS\n";
+#endif
 
 
 cout << "\n";

@@ -95,6 +95,9 @@ void ZZ_p::DoInstall()
       if (8.0*fn*(fn+48) > NTL_FDOUBLE_PRECISION)
          ResourceError("modulus too big");
 
+      if (n >= NTL_SP_BOUND)
+         ResourceError("modulus too big");
+
 
 
       FFTInfo->rem_struct.init(n, ZZ_pInfo->p, GetFFTPrime);

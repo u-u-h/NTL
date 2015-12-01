@@ -328,6 +328,16 @@ using the configure script.
 #endif
 
 
+#if 0
+#define NTL_MAXIMIZE_SP_NBITS
+
+/* Allows for 62-bit single-precision moduli on 64-bit platforms.
+ * By default, such moduli are restricted to 60 bits, which
+ * usually gives slightly better performance across a range of
+ * of parameters.
+ */
+
+#endif
 
 /*************************************************************************
  *

@@ -67,6 +67,7 @@ sub BadPCLMUL {
 'NTL_LEGACY_INPUT_ERROR'   => 'off',
 'NTL_DISABLE_LONGDOUBLE'  => 'off',
 'NTL_DISABLE_LONGLONG'  => 'off',
+'NTL_MAXIMIZE_SP_NBITS'  => 'off',
 'NTL_LEGACY_SP_MULMOD'  => 'off',
 'NTL_THREADS'           => 'off',
 'NTL_EXCEPTIONS'        => 'off',

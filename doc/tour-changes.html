@@ -16,10 +16,28 @@ A Tour of NTL: Summary of Changes
 </p>
 </h1>
 
+<p><hr><p>
+<h3>
+2015.11.13: Changes between NTL 9.6.1 and 9.6.2
+</h3>
+
+<ul>
+<li>
+More small tweaks and a new configuration variable:
+<pre>
+NTL_MAXIMIZE_SP_NBITS=off
+
+# Allows for 62-bit single-precision moduli on 64-bit platforms.
+# By default, such moduli are restricted to 60 bits, which
+# usually gives *slightly* better performance across a range of
+# of parameters.
+</pre>
+
+</ul>
 
 <p><hr><p>
 <h3>
-2015.11.11: Changes between NTL 9.6.0 and 9.6.1
+2015.11.13: Changes between NTL 9.6.0 and 9.6.1
 </h3>
 
 <ul>
