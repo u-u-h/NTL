@@ -325,14 +325,10 @@ Thread safety
 </h3>
 <p>
 As of v7.0, NTL is thread safe.
-That said, there are two things to be aware of:
+That said, there are several things to be aware of:
 <ul>
+
 <li>
-While extreme care has been taken with the design and implementation
-of thread safety, this feature is still very new and not been
-subjected to a lot of testing.
-<li>
-<p>
 To use this feature, you have to enable <tt>NTL_THREADS</tt>
 in the configuration script.
 Also, you will need a compiler and runtime library that 
@@ -341,19 +337,28 @@ including <tt>thread_local</tt> storage.
 
 <p>
 <i>
-As I wrote this in Nov. 2014, there were very few compilers
+Currently (October 2015), there are still few compilers
 that satisfy the requirements.
-I was successfully able to build and test NTL with threads
+I have been able to compile and run multithreaded code
 using gcc 4.9.2 on a Linux system.
 I have not been able to do so on any current Mac OSX system:
 in fact, no compiler on current Mac systems (gcc or clang)
 yet have proper support for <tt>thread_local</tt> storage.
 </i>
 
+<p> <li>
+While extreme care has been taken with the design and implementation
+of thread safety, this feature is still fairly new and needs
+more stress testing.
+
+<p> <li>
+You must build NTL using GMP (i.e., configure with <tt>NTL_GMP_LIP=on</tt>).
+The classic LIP integer arithmetic is not thread safe: it could
+be made so, but it is not a priority at this time.
+
 <p>
 <li>
-NTL remains thread safe when built with GMP.
-however, the current version (v1.1) of the external gf2x
+The current version (v1.1) of the external gf2x
 library is not thread safe.
 Therefore, <b>you should build NTL using gf2x if you need a thread-safe
 build</b>.
@@ -412,6 +417,27 @@ The overall structure of the code has been modified so that
 the code base is nearly identical for regular and thread-safe builds:
 there are just a few <tt>ifdef</tt>'s on the <tt>NTL_THREADS</tt>
 flag.
+
+
+<p>
+<h3>
+Thread Boosting
+</h3>
+<p>
+
+As of v9.5.0, NTL provides a <i>thread boosting</i> feature.
+With this feature, certain code within NTL will use available
+threads to speed up computations on a multicore
+machine.
+This feature is enabled by setting <tt>NTL_THREAD_BOOST=on</tt>
+during configuration.
+See <a href="BasicThreadPool.cpp.html">BasicThreadPool.txt</a>
+for more information.
+
+<p>
+This feature is a work in progress.
+Currently, basic <tt>ZZ_pX</tt> arithmetic has been thread boosted.
+More code will be boosted later.
 
 
 <p>

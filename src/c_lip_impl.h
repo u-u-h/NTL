@@ -6,6 +6,10 @@
 
 NTL_CLIENT
 
+#ifdef NTL_THREADS
+#error "NTL_THREADS does not work with classic LIP: use GMP instead"
+#endif
+
 
 #define MustAlloc(c, len)  (!(c) || ((c)[-1] >> 1) < (len))
    /* Fast test to determine if allocation is necessary */

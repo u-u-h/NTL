@@ -26,7 +26,8 @@ Here is a little program that illustrates this.
 #include <NTL/ZZ_pXFactoring.h>
 #include <NTL/ZZ_pEX.h>
 
-NTL_CLIENT
+using namespace std;
+using namespace NTL;
 
 int main()
 {
@@ -54,39 +55,38 @@ int main()
 }
 ENDPLAIN -->
 <!-- STARTPRETTY {{{ -->
-<p><p><table cellPadding=10px><tr><td><font color="#000000">
-<font face="monospace">
-<font color="#1874cd">#include&nbsp;</font><font color="#4a708b">&lt;NTL/ZZ_pXFactoring.h&gt;</font><br>
-<font color="#1874cd">#include&nbsp;</font><font color="#4a708b">&lt;NTL/ZZ_pEX.h&gt;</font><br>
+<p><p><table cellPadding=10px><tr><td><font color="#000000"><font face="monospace">
+<font color="#1773cc">#include </font><font color="#4a6f8b">&lt;NTL/ZZ_pXFactoring.h&gt;</font><br>
+<font color="#1773cc">#include </font><font color="#4a6f8b">&lt;NTL/ZZ_pEX.h&gt;</font><br>
 <br>
-NTL_CLIENT<br>
+<font color="#b02f60"><b>using</b></font>&nbsp;<font color="#008b00"><b>namespace</b></font>&nbsp;std;<br>
+<font color="#b02f60"><b>using</b></font>&nbsp;<font color="#008b00"><b>namespace</b></font>&nbsp;NTL;<br>
 <br>
 <font color="#008b00"><b>int</b></font>&nbsp;main()<br>
 {<br>
-&nbsp;&nbsp; ZZ_p::init(ZZ(<font color="#ff8c00">17</font>));&nbsp;<font color="#0000ee"><i>// define GF(17)</i></font><br>
+&nbsp;&nbsp; ZZ_p::init(ZZ(<font color="#ff8b00">17</font>)); <font color="#0000ed"><i>// define GF(17)</i></font><br>
 <br>
 &nbsp;&nbsp; ZZ_pX P;<br>
-&nbsp;&nbsp; BuildIrred(P,&nbsp;<font color="#ff8c00">10</font>);&nbsp;<font color="#0000ee"><i>// generate an irreducible polynomial P</i></font><br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#0000ee"><i>// of degree 10 over GF(17)</i></font><br>
+&nbsp;&nbsp; BuildIrred(P, <font color="#ff8b00">10</font>); <font color="#0000ed"><i>// generate an irreducible polynomial P</i></font><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#0000ed"><i>// of degree 10 over GF(17)</i></font><br>
 <br>
-&nbsp;&nbsp; ZZ_pE::init(P);&nbsp;<font color="#0000ee"><i>// define GF(17^10)</i></font><br>
+&nbsp;&nbsp; ZZ_pE::init(P); <font color="#0000ed"><i>// define GF(17^10)</i></font><br>
 <br>
-&nbsp;&nbsp; ZZ_pEX f, g, h;&nbsp;&nbsp;<font color="#0000ee"><i>// declare polynomials over GF(17^10)</i></font><br>
+&nbsp;&nbsp; ZZ_pEX f, g, h;&nbsp;&nbsp;<font color="#0000ed"><i>// declare polynomials over GF(17^10)</i></font><br>
 <br>
-&nbsp;&nbsp; random(f,&nbsp;<font color="#ff8c00">20</font>);&nbsp;&nbsp;<font color="#0000ee"><i>// f is a random, monic polynomial of degree 20</i></font><br>
-&nbsp;&nbsp; SetCoeff(f,&nbsp;<font color="#ff8c00">20</font>);<br>
+&nbsp;&nbsp; random(f, <font color="#ff8b00">20</font>);&nbsp;&nbsp;<font color="#0000ed"><i>// f is a random, monic polynomial of degree 20</i></font><br>
+&nbsp;&nbsp; SetCoeff(f, <font color="#ff8b00">20</font>);<br>
 <br>
-&nbsp;&nbsp; random(h,&nbsp;<font color="#ff8c00">20</font>);&nbsp;<font color="#0000ee"><i>// h is a random polynomial of degree less than 20</i></font><br>
+&nbsp;&nbsp; random(h, <font color="#ff8b00">20</font>); <font color="#0000ed"><i>// h is a random polynomial of degree less than 20</i></font><br>
 <br>
-&nbsp;&nbsp; g = MinPolyMod(h, f);&nbsp;<font color="#0000ee"><i>// compute the minimum polynomial of h modulo f</i></font><br>
+&nbsp;&nbsp; g = MinPolyMod(h, f); <font color="#0000ed"><i>// compute the minimum polynomial of h modulo f</i></font><br>
 <br>
-&nbsp;&nbsp;&nbsp;<font color="#b03060"><b>if</b></font>&nbsp;(g ==&nbsp;<font color="#ff8c00">0</font>) Error(<font color="#4a708b">&quot;oops (1)&quot;</font>);&nbsp;<font color="#0000ee"><i>// check that g != 0</i></font><br>
+&nbsp;&nbsp; <font color="#b02f60"><b>if</b></font>&nbsp;(g == <font color="#ff8b00">0</font>) Error(<font color="#4a6f8b">&quot;oops (1)&quot;</font>); <font color="#0000ed"><i>// check that g != 0</i></font><br>
 <br>
-&nbsp;&nbsp;&nbsp;<font color="#b03060"><b>if</b></font>&nbsp;(CompMod(g, h, f) !=&nbsp;<font color="#ff8c00">0</font>)&nbsp;<font color="#0000ee"><i>// check that g(h) = 0 mod f</i></font><br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Error(<font color="#4a708b">&quot;oops (2)&quot;</font>);<br>
+&nbsp;&nbsp; <font color="#b02f60"><b>if</b></font>&nbsp;(CompMod(g, h, f) != <font color="#ff8b00">0</font>) <font color="#0000ed"><i>// check that g(h) = 0 mod f</i></font><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Error(<font color="#4a6f8b">&quot;oops (2)&quot;</font>);<br>
 }<br>
-</font>
-</font></td></tr></table><p><p>
+</font></font></td></tr></table><p><p>
 <!-- }}} ENDPRETTY -->
 
 

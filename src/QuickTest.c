@@ -161,6 +161,10 @@ int main()
    cerr << "NTL_EXCEPTIONS\n";
 #endif
 
+#ifdef NTL_THREAD_BOOST
+   cerr << "NTL_THREAD_BOOST\n";
+#endif
+
 
 #ifdef NTL_LEGACY_SP_MULMOD
    cout << "NTL_LEGACY_SP_MULMOD\n";

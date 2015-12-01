@@ -1,7 +1,12 @@
 
 #include <NTL/ZZ_pX.h>
-
+#include <NTL/BasicThreadPool.h>
 #include <NTL/new.h>
+
+
+
+
+
 
 NTL_START_IMPL
 
@@ -899,7 +904,8 @@ void interpolate(ZZ_pX& f, const vec_ZZ_p& a, const vec_ZZ_p& b)
 
 
    
-void InnerProduct(ZZ_pX& x, const vec_ZZ_p& v, long low, long high, 
+
+NTL_TBDECL(InnerProduct)(ZZ_pX& x, const vec_ZZ_p& v, long low, long high, 
                    const vec_ZZ_pX& H, long n, ZZVec& t)
 {
    NTL_ZZRegister(s);
@@ -925,6 +931,53 @@ void InnerProduct(ZZ_pX& x, const vec_ZZ_p& v, long low, long high,
       conv(x.rep[j], t[j]);
    x.normalize();
 }
+
+
+#ifdef NTL_THREAD_BOOST
+
+void InnerProduct(ZZ_pX& x, const vec_ZZ_p& v, long low, long high, 
+                   const vec_ZZ_pX& H, long n, ZZVec& t)
+{
+   BasicThreadPool *pool = NTLThreadPool;
+
+   if (!pool || pool->active() || pool->NumThreads() == 1) {
+      basic_InnerProduct(x, v, low, high, H, n, t);
+      return;
+   }
+
+   high = min(high, v.length()-1);
+   x.rep.SetLength(n);
+
+   ZZ_pContext local_context;
+   local_context.save();
+
+   pool->exec_range(n,
+   [low, high, &x, &t, &H, &v, &local_context](long first, long last) {
+
+      local_context.restore();
+
+      NTL_ZZRegister(s);
+   
+      for (long j = first; j < last; j++) clear(t[j]);
+
+      for (long i = low; i <= high; i++) {
+         const vec_ZZ_p& h = H[i-low].rep;
+         long m = min(h.length(), last);
+         const ZZ& w = rep(v[i]);
+   
+         for (long j = first; j < m; j++) {
+            mul(s, w, rep(h[j]));
+            add(t[j], t[j], s);
+         }
+      }
+
+      for (long j = first; j < last; j++) conv(x.rep[j], t[j]);
+   } );
+
+   x.normalize();
+}
+
+#endif
 
 
 void CompMod(ZZ_pX& x, const ZZ_pX& g, const ZZ_pXArgument& A, 
@@ -1145,7 +1198,7 @@ void UpdateMap(vec_ZZ_p& x, const vec_ZZ_p& aa,
 
    
 
-void ProjectPowers(vec_ZZ_p& x, const vec_ZZ_p& a, long k,
+NTL_TBDECL(ProjectPowers)(vec_ZZ_p& x, const vec_ZZ_p& a, long k,
                    const ZZ_pXArgument& H, const ZZ_pXModulus& F)
 
 {
@@ -1179,6 +1232,63 @@ void ProjectPowers(vec_ZZ_p& x, const vec_ZZ_p& a, long k,
    }
 }
 
+
+#ifdef NTL_THREAD_BOOST
+
+void ProjectPowers(vec_ZZ_p& x, const vec_ZZ_p& a, long k,
+                   const ZZ_pXArgument& H, const ZZ_pXModulus& F)
+
+{
+   BasicThreadPool *pool = NTLThreadPool;
+
+   if (!pool || pool->active() || pool->NumThreads() == 1) {
+      basic_ProjectPowers(x, a, k, H, F);
+      return;
+   }
+
+   long n = F.n;
+
+   if (a.length() > n || k < 0) 
+      LogicError("ProjectPowers: bad args");
+   if (NTL_OVERFLOW(k, 1, 0)) 
+      ResourceError("ProjectPowers: excessive args");
+
+
+   long m = H.H.length()-1;
+   long l = (k+m-1)/m - 1;
+
+   ZZ_pXMultiplier M;
+   build(M, H.H[m], F);
+
+   vec_ZZ_p s(INIT_SIZE, n);
+   s = a;
+   StripZeroes(s);
+
+   x.SetLength(k);
+
+   ZZ_pContext local_context;
+   local_context.save();
+
+
+   for (long i = 0; i <= l; i++) {
+      long m1 = min(m, k-i*m);
+      ZZ_p* w = &x[i*m];
+
+      pool->exec_range(m1,
+      [w, &H, &s, &local_context](long first, long last) {
+         local_context.restore();
+         for (long j = first; j < last; j++)
+            InnerProduct(w[j], H.H[j].rep, s);
+      } );
+
+
+      if (i < l)
+         UpdateMap(s, s, M, F);
+   }
+}
+
+
+#endif
 
 
 void ProjectPowers(vec_ZZ_p& x, const vec_ZZ_p& a, long k,

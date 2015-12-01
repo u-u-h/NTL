@@ -4995,7 +4995,12 @@ void _ntl_rem_struct_tbl::eval(long *x, _ntl_gbigint a,
 
 #else
 
-// General case: no loop unrolling
+// General case: some loop unrolling (also using "Duff's Device")
+// for the case where BPL-SPNBITS == 4: this is the common
+// case on 64-bit machines.  The loop unrolling and Duff seems
+// to shave off 5-10%
+
+#define TBL_UNROLL (1)
 
 // DIRT: won't work if GMP has nails
 void _ntl_rem_struct_tbl::eval(long *x, _ntl_gbigint a, 
@@ -5016,10 +5021,34 @@ void _ntl_rem_struct_tbl::eval(long *x, _ntl_gbigint a,
       long i;
       for (i = 0; i < n; i++) {
          mp_limb_t *tp = tbl[i]; 
+
+
          NTL_ULL_TYPE acc = adata[0];
+
+#if (TBL_UNROLL && NTL_BITS_PER_LONG-NTL_SP_NBITS == 4)
+         switch (sa) {
+         case 16:  acc += ((NTL_ULL_TYPE) adata[16-1]) * ((NTL_ULL_TYPE) tp[16-1]);
+         case 15:  acc += ((NTL_ULL_TYPE) adata[15-1]) * ((NTL_ULL_TYPE) tp[15-1]);
+         case 14:  acc += ((NTL_ULL_TYPE) adata[14-1]) * ((NTL_ULL_TYPE) tp[14-1]);
+         case 13:  acc += ((NTL_ULL_TYPE) adata[13-1]) * ((NTL_ULL_TYPE) tp[13-1]);
+         case 12:  acc += ((NTL_ULL_TYPE) adata[12-1]) * ((NTL_ULL_TYPE) tp[12-1]);
+         case 11:  acc += ((NTL_ULL_TYPE) adata[11-1]) * ((NTL_ULL_TYPE) tp[11-1]);
+         case 10:  acc += ((NTL_ULL_TYPE) adata[10-1]) * ((NTL_ULL_TYPE) tp[10-1]);
+         case 9:  acc += ((NTL_ULL_TYPE) adata[9-1]) * ((NTL_ULL_TYPE) tp[9-1]);
+         case 8:  acc += ((NTL_ULL_TYPE) adata[8-1]) * ((NTL_ULL_TYPE) tp[8-1]);
+         case 7:  acc += ((NTL_ULL_TYPE) adata[7-1]) * ((NTL_ULL_TYPE) tp[7-1]);
+         case 6:  acc += ((NTL_ULL_TYPE) adata[6-1]) * ((NTL_ULL_TYPE) tp[6-1]);
+         case 5:  acc += ((NTL_ULL_TYPE) adata[5-1]) * ((NTL_ULL_TYPE) tp[5-1]);
+         case 4:  acc += ((NTL_ULL_TYPE) adata[4-1]) * ((NTL_ULL_TYPE) tp[4-1]);
+         case 3:  acc += ((NTL_ULL_TYPE) adata[3-1]) * ((NTL_ULL_TYPE) tp[3-1]);
+         case 2:  acc += ((NTL_ULL_TYPE) adata[2-1]) * ((NTL_ULL_TYPE) tp[2-1]);
+         }
+
+#else
          long j;
          for (j = 1; j < sa; j++)
             acc += ((NTL_ULL_TYPE) adata[j]) * ((NTL_ULL_TYPE) tp[j]);
+#endif
 
          mp_limb_t accvec[2];
          accvec[0] = acc;
@@ -5038,8 +5067,27 @@ void _ntl_rem_struct_tbl::eval(long *x, _ntl_gbigint a,
 
          {
             NTL_ULL_TYPE sum = ap[0];
+
+#if (TBL_UNROLL && NTL_BITS_PER_LONG-NTL_SP_NBITS == 4)
+            sum += ((NTL_ULL_TYPE) ap[1]) * ((NTL_ULL_TYPE) tp[1]);
+            sum += ((NTL_ULL_TYPE) ap[2]) * ((NTL_ULL_TYPE) tp[2]);
+            sum += ((NTL_ULL_TYPE) ap[3]) * ((NTL_ULL_TYPE) tp[3]);
+            sum += ((NTL_ULL_TYPE) ap[4]) * ((NTL_ULL_TYPE) tp[4]);
+            sum += ((NTL_ULL_TYPE) ap[5]) * ((NTL_ULL_TYPE) tp[5]);
+            sum += ((NTL_ULL_TYPE) ap[6]) * ((NTL_ULL_TYPE) tp[6]);
+            sum += ((NTL_ULL_TYPE) ap[7]) * ((NTL_ULL_TYPE) tp[7]);
+            sum += ((NTL_ULL_TYPE) ap[8]) * ((NTL_ULL_TYPE) tp[8]);
+            sum += ((NTL_ULL_TYPE) ap[9]) * ((NTL_ULL_TYPE) tp[9]);
+            sum += ((NTL_ULL_TYPE) ap[10]) * ((NTL_ULL_TYPE) tp[10]);
+            sum += ((NTL_ULL_TYPE) ap[11]) * ((NTL_ULL_TYPE) tp[11]);
+            sum += ((NTL_ULL_TYPE) ap[12]) * ((NTL_ULL_TYPE) tp[12]);
+            sum += ((NTL_ULL_TYPE) ap[13]) * ((NTL_ULL_TYPE) tp[13]);
+            sum += ((NTL_ULL_TYPE) ap[14]) * ((NTL_ULL_TYPE) tp[14]);
+            sum += ((NTL_ULL_TYPE) ap[15]) * ((NTL_ULL_TYPE) tp[15]);
+#else
             for (long j = 1; j < Bnd; j++)
                sum += ((NTL_ULL_TYPE) ap[j]) * ((NTL_ULL_TYPE) tp[j]);
+#endif
 
             acc21 = sum >> NTL_BITS_PER_LONG;
             acc0 = sum;
@@ -5047,9 +5095,29 @@ void _ntl_rem_struct_tbl::eval(long *x, _ntl_gbigint a,
 
          long m;
          for (m = sa-Bnd, ap += Bnd, tp += Bnd; m >= Bnd; m -= Bnd, ap += Bnd, tp += Bnd) {
+
             NTL_ULL_TYPE sum = ((NTL_ULL_TYPE) ap[0]) * ((NTL_ULL_TYPE) tp[0]);
+
+#if (TBL_UNROLL && NTL_BITS_PER_LONG-NTL_SP_NBITS == 4)
+            sum += ((NTL_ULL_TYPE) ap[1]) * ((NTL_ULL_TYPE) tp[1]);
+            sum += ((NTL_ULL_TYPE) ap[2]) * ((NTL_ULL_TYPE) tp[2]);
+            sum += ((NTL_ULL_TYPE) ap[3]) * ((NTL_ULL_TYPE) tp[3]);
+            sum += ((NTL_ULL_TYPE) ap[4]) * ((NTL_ULL_TYPE) tp[4]);
+            sum += ((NTL_ULL_TYPE) ap[5]) * ((NTL_ULL_TYPE) tp[5]);
+            sum += ((NTL_ULL_TYPE) ap[6]) * ((NTL_ULL_TYPE) tp[6]);
+            sum += ((NTL_ULL_TYPE) ap[7]) * ((NTL_ULL_TYPE) tp[7]);
+            sum += ((NTL_ULL_TYPE) ap[8]) * ((NTL_ULL_TYPE) tp[8]);
+            sum += ((NTL_ULL_TYPE) ap[9]) * ((NTL_ULL_TYPE) tp[9]);
+            sum += ((NTL_ULL_TYPE) ap[10]) * ((NTL_ULL_TYPE) tp[10]);
+            sum += ((NTL_ULL_TYPE) ap[11]) * ((NTL_ULL_TYPE) tp[11]);
+            sum += ((NTL_ULL_TYPE) ap[12]) * ((NTL_ULL_TYPE) tp[12]);
+            sum += ((NTL_ULL_TYPE) ap[13]) * ((NTL_ULL_TYPE) tp[13]);
+            sum += ((NTL_ULL_TYPE) ap[14]) * ((NTL_ULL_TYPE) tp[14]);
+            sum += ((NTL_ULL_TYPE) ap[15]) * ((NTL_ULL_TYPE) tp[15]);
+#else
             for (long j = 1; j < Bnd; j++)
                sum += ((NTL_ULL_TYPE) ap[j]) * ((NTL_ULL_TYPE) tp[j]);
+#endif
 
             mp_limb_t sum1 = sum >> NTL_BITS_PER_LONG;
             mp_limb_t sum0 = sum;
@@ -5062,8 +5130,28 @@ void _ntl_rem_struct_tbl::eval(long *x, _ntl_gbigint a,
 
          if (m > 0) {
             NTL_ULL_TYPE sum = ((NTL_ULL_TYPE) ap[0]) * ((NTL_ULL_TYPE) tp[0]);
+
+#if (TBL_UNROLL && NTL_BITS_PER_LONG-NTL_SP_NBITS == 4)
+            switch (m) {
+            case 15:  sum += ((NTL_ULL_TYPE) ap[15-1]) * ((NTL_ULL_TYPE) tp[15-1]);
+            case 14:  sum += ((NTL_ULL_TYPE) ap[14-1]) * ((NTL_ULL_TYPE) tp[14-1]);
+            case 13:  sum += ((NTL_ULL_TYPE) ap[13-1]) * ((NTL_ULL_TYPE) tp[13-1]);
+            case 12:  sum += ((NTL_ULL_TYPE) ap[12-1]) * ((NTL_ULL_TYPE) tp[12-1]);
+            case 11:  sum += ((NTL_ULL_TYPE) ap[11-1]) * ((NTL_ULL_TYPE) tp[11-1]);
+            case 10:  sum += ((NTL_ULL_TYPE) ap[10-1]) * ((NTL_ULL_TYPE) tp[10-1]);
+            case 9:  sum += ((NTL_ULL_TYPE) ap[9-1]) * ((NTL_ULL_TYPE) tp[9-1]);
+            case 8:  sum += ((NTL_ULL_TYPE) ap[8-1]) * ((NTL_ULL_TYPE) tp[8-1]);
+            case 7:  sum += ((NTL_ULL_TYPE) ap[7-1]) * ((NTL_ULL_TYPE) tp[7-1]);
+            case 6:  sum += ((NTL_ULL_TYPE) ap[6-1]) * ((NTL_ULL_TYPE) tp[6-1]);
+            case 5:  sum += ((NTL_ULL_TYPE) ap[5-1]) * ((NTL_ULL_TYPE) tp[5-1]);
+            case 4:  sum += ((NTL_ULL_TYPE) ap[4-1]) * ((NTL_ULL_TYPE) tp[4-1]);
+            case 3:  sum += ((NTL_ULL_TYPE) ap[3-1]) * ((NTL_ULL_TYPE) tp[3-1]);
+            case 2:  sum += ((NTL_ULL_TYPE) ap[2-1]) * ((NTL_ULL_TYPE) tp[2-1]);
+            }
+#else
             for (m--, ap++, tp++; m > 0; m--, ap++, tp++)
                sum += ((NTL_ULL_TYPE) ap[0]) * ((NTL_ULL_TYPE) tp[0]);
+#endif
 
             mp_limb_t sum1 = sum >> NTL_BITS_PER_LONG;
             mp_limb_t sum0 = sum;

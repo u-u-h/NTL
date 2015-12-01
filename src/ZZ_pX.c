@@ -1,4 +1,6 @@
 #include <NTL/ZZ_pX.h>
+#include <NTL/BasicThreadPool.h>
+#include <NTL/new.h>
 
 
 // The mul & sqr routines use routines from ZZX, 
@@ -12,7 +14,6 @@
 
 #endif
 
-#include <NTL/new.h>
 
 
 #if (defined(NTL_GMP_LIP))
@@ -435,13 +436,6 @@ void negate(ZZ_pX& x, const ZZ_pX& a)
 
 #ifndef NTL_WIZARD_HACK
 
-// These crossovers are tuned for a Pentium, but hopefully
-// they should be OK on other machines as well.
-
-
-const long SS_kbound = 40;
-const double SS_rbound = 1.25;
-
 
 void mul(ZZ_pX& c, const ZZ_pX& a, const ZZ_pX& b)
 {
@@ -473,8 +467,25 @@ void mul(ZZ_pX& c, const ZZ_pX& a, const ZZ_pX& b)
    else {
       long mbits;
       mbits = NumBits(ZZ_p::modulus());
-      if (k >= SS_kbound && 
-          SSRatio(deg(a), mbits, deg(b), mbits) < SS_rbound) {
+
+      long nt = 1;
+      // FIXME: needs to be updated when I thread-enable the SS
+      // mul routine
+      
+#ifdef NTL_THREAD_BOOST
+      BasicThreadPool *pool = NTLThreadPool;
+      if (pool && !pool->active()) nt  = pool->NumThreads();
+#endif
+
+      double rat = SSRatio(deg(a), mbits, deg(b), mbits);
+
+      if ( nt == 1 && (
+
+         (k >= 53  && rat < 1.10) || 
+         (k >= 106 && rat < 1.30) || 
+         (k >= 212 && rat < 1.75) 
+
+      )) {
          ZZX A, B, C;
          conv(A, a);
          conv(B, b);
@@ -513,8 +524,26 @@ void sqr(ZZ_pX& c, const ZZ_pX& a)
    else {
       long mbits;
       mbits = NumBits(ZZ_p::modulus());
-      if (k >= SS_kbound && 
-          SSRatio(deg(a), mbits, deg(a), mbits) < SS_rbound) {
+
+
+      long nt = 1;
+      // FIXME: needs to be updated when I thread-enable the SS
+      // mul routine
+
+#ifdef NTL_THREAD_BOOST
+      BasicThreadPool *pool = NTLThreadPool;
+      if (pool && !pool->active()) nt  = pool->NumThreads();
+#endif
+
+      double rat = SSRatio(deg(a), mbits, deg(a), mbits);
+
+      if ( nt == 1 && (
+
+         (k >= 53  && rat < 1.10) || 
+         (k >= 106 && rat < 1.30) || 
+         (k >= 212 && rat < 1.75) 
+
+      )) {
          ZZX A, C;
          conv(A, a);
          SSSqr(C, A);
@@ -984,6 +1013,38 @@ void PlainRem(ZZ_pX& r, const ZZ_pX& a, const ZZ_pX& b)
    r.normalize();
 }
 
+
+
+NTL_TBDECL_static(MulAux)(ZZ_p* xp, const ZZ_p* ap, const ZZ_p& t, long n)
+{
+   for (long i = 0; i < n; i++) 
+      mul(xp[i], ap[i], t);
+}
+
+#ifdef NTL_THREAD_BOOST
+static void MulAux(ZZ_p* xp, const ZZ_p* ap, const ZZ_p& t, long n)
+{
+   BasicThreadPool *pool = NTLThreadPool;
+
+   if (!pool || pool->active() || pool->NumThreads() == 1) {
+      basic_MulAux(xp, ap, t, n);
+      return;
+   }
+
+   ZZ_pContext local_context;
+   local_context.save();
+
+   pool->exec_range(n,
+   [xp, ap, &t, &local_context](long first, long last) {
+      local_context.restore();
+      for (long i = first; i < last; i++) 
+         mul(xp[i], ap[i], t);
+   } );
+}
+#endif
+
+
+
 void mul(ZZ_pX& x, const ZZ_pX& a, const ZZ_p& b)
 {
    if (IsZero(b)) {
@@ -998,11 +1059,10 @@ void mul(ZZ_pX& x, const ZZ_pX& a, const ZZ_p& b)
 
    NTL_ZZ_pRegister(t);
 
-   long i, da;
+   long da;
 
    const ZZ_p *ap;
    ZZ_p* xp;
-
 
    t = b;
 
@@ -1011,8 +1071,7 @@ void mul(ZZ_pX& x, const ZZ_pX& a, const ZZ_p& b)
    ap = a.rep.elts();
    xp = x.rep.elts();
 
-   for (i = 0; i <= da; i++) 
-      mul(xp[i], ap[i], t);
+   MulAux(xp, ap, t, da+1);
 
    x.normalize();
 }
@@ -1168,6 +1227,50 @@ long InvModStatus(ZZ_pX& x, const ZZ_pX& a, const ZZ_pX& f)
 }
 
 
+NTL_TBDECL_static(MulByXModAux1)(long n, ZZ_p *hh, const ZZ_p* aa, const ZZ_p *ff, const ZZ_p& z)
+{
+   NTL_ZZ_pRegister(t);
+
+   for (long i = n-1; i >= 1; i--) {
+      // hh[i] = aa[i-1] + z*ff[i] 
+      mul(t, z, ff[i]);
+      add(hh[i], aa[i-1], t);
+   }
+}
+
+#ifdef NTL_THREAD_BOOST
+
+static void MulByXModAux1(long n, ZZ_p *hh, const ZZ_p* aa, const ZZ_p *ff, const ZZ_p& z)
+{
+
+   BasicThreadPool *pool = NTLThreadPool;
+
+   if (!pool || pool->active() || pool->NumThreads() == 1 || hh == aa) {
+      // Careful! can't parallelize if hh == aa
+      basic_MulByXModAux1(n, hh, aa, ff, z);
+      return;
+   }
+
+   ZZ_pContext local_context;
+   local_context.save();
+
+   pool->exec_range(n-1,
+   [n, hh, aa, ff, &z, &local_context]
+   (long first, long last) {
+      local_context.restore();
+      NTL_ZZ_pRegister(t);
+
+      for (long idx = first; idx < last; idx++) {
+         long i = n-1-idx;
+         // hh[i] = aa[i-1] + z*ff[i] 
+         mul(t, z, ff[i]);
+         add(hh[i], aa[i-1], t);
+      }
+   } );
+}
+
+
+#endif
 
 
 static
@@ -1177,7 +1280,7 @@ void MulByXModAux(ZZ_pX& h, const ZZ_pX& a, const ZZ_pX& f)
    ZZ_p* hh;
    const ZZ_p *aa, *ff;
 
-   ZZ_p t, z;
+   NTL_ZZ_pRegister(z);
 
    n = deg(f);
    m = deg(a);
@@ -1205,10 +1308,9 @@ void MulByXModAux(ZZ_pX& h, const ZZ_pX& a, const ZZ_pX& f)
       negate(z, aa[n-1]);
       if (!IsOne(ff[n]))
          div(z, z, ff[n]);
-      for (i = n-1; i >= 1; i--) {
-         mul(t, z, ff[i]);
-         add(hh[i], aa[i-1], t);
-      }
+
+      MulByXModAux1(n, hh, aa, ff, z); 
+      
       mul(hh[0], z, ff[0]);
       h.normalize();
    }
@@ -1432,7 +1534,8 @@ void FromModularRep(ZZ_p& x, const vec_long& a, const ZZ_pFFTInfoT *FFTInfo,
 
 
 
-void ToFFTRep(FFTRep& y, const ZZ_pX& x, long k, long lo, long hi)
+
+NTL_TBDECL(ToFFTRep)(FFTRep& y, const ZZ_pX& x, long k, long lo, long hi)
 // computes an n = 2^k point convolution.
 // if deg(x) >= 2^k, then x is first reduced modulo X^n-1.
 {
@@ -1504,8 +1607,111 @@ void ToFFTRep(FFTRep& y, const ZZ_pX& x, long k, long lo, long hi)
 }
 
 
+#ifdef NTL_THREAD_BOOST
 
-void RevToFFTRep(FFTRep& y, const vec_ZZ_p& x, 
+void ToFFTRep(FFTRep& y, const ZZ_pX& x, long k, long lo, long hi)
+// computes an n = 2^k point convolution.
+// if deg(x) >= 2^k, then x is first reduced modulo X^n-1.
+{
+   BasicThreadPool *pool = NTLThreadPool;
+
+   if (!pool || pool->active() || pool->NumThreads() == 1) {
+      basic_ToFFTRep(y, x, k, lo, hi);
+      return;
+   }
+
+
+
+   const ZZ_pFFTInfoT *FFTInfo = ZZ_p::GetFFTInfo();
+
+   long n, m;
+
+
+   if (k > FFTInfo->MaxRoot) 
+      ResourceError("Polynomial too big for FFT");
+
+   if (lo < 0)
+      LogicError("bad arg to ToFFTRep");
+
+   long nprimes = FFTInfo->NumPrimes;
+
+   hi = min(hi, deg(x));
+
+   y.SetSize(k);
+
+   n = 1L << k;
+
+   m = max(hi-lo + 1, 0);
+
+   const ZZ_p *xx = x.rep.elts();
+
+
+   ZZ_pContext local_context;
+   local_context.save();
+
+   if (n >= m) {
+      pool->exec_range(m, 
+      [lo, xx, &y, nprimes, &local_context, FFTInfo]
+      (long first, long last) {
+
+        local_context.restore();
+        ZZ_pTmpSpaceT *TmpSpace = ZZ_p::GetTmpSpace();
+        // TmpSpace is thread local!
+
+        vec_long& t = ModularRepBuf;
+        t.SetLength(nprimes);
+      
+        for (long j = first; j < last; j++) {
+           ToModularRep(t, xx[j+lo], FFTInfo, TmpSpace);
+           for (long i = 0; i < nprimes; i++) {
+              y.tbl[i][j] = t[i];
+           }
+        }
+      } );
+   }
+   else {
+      pool->exec_range(n, 
+      [lo, m, n, xx, &y, nprimes, &local_context, FFTInfo]
+      (long first, long last) {
+         local_context.restore();
+         ZZ_pTmpSpaceT *TmpSpace = ZZ_p::GetTmpSpace();
+         // TmpSpace is thread local!
+ 
+         vec_long& t = ModularRepBuf;
+         t.SetLength(nprimes);
+   
+         NTL_ZZ_pRegister(accum);
+         for (long j = first; j < last; j++) {
+            accum = xx[j+lo];
+            for (long j1 = j + n; j1 < m; j1 += n)
+               add(accum, accum, xx[j1+lo]);
+            ToModularRep(t, accum, FFTInfo, TmpSpace);
+            for (long i = 0; i < nprimes; i++) {
+               y.tbl[i][j] = t[i];
+            }
+         }
+      } );
+   }
+
+   // FIXME: something to think about...part of the above logic
+   // is essentially a matrix transpose, which could lead to bad
+   // cache performance.  I don't really know if that is an issue.
+
+   pool->exec_range(nprimes, 
+   [&y, m, n, k](long first, long last) {
+     for (long i = first; i < last; i++) {
+        long *yp = &y.tbl[i][0];
+        for (long j = m; j < n; j++) yp[j] = 0;
+        FFTFwd(yp, yp, k, i);
+     }
+   } );
+}
+
+#endif
+
+
+
+NTL_TBDECL(RevToFFTRep)(FFTRep& y, const vec_ZZ_p& x, 
                  long k, long lo, long hi, long offset)
 // computes an n = 2^k point convolution of X^offset*x[lo..hi] mod X^n-1
 // using "inverted" evaluation points.
@@ -1517,7 +1723,7 @@ void RevToFFTRep(FFTRep& y, const vec_ZZ_p& x,
 
    long n, i, j, m, j1;
    vec_long& t = ModularRepBuf;
-   ZZ_p accum;
+   NTL_ZZ_pRegister(accum);
 
    if (k > FFTInfo->MaxRoot) 
       ResourceError("Polynomial too big for FFT");
@@ -1567,7 +1773,104 @@ void RevToFFTRep(FFTRep& y, const vec_ZZ_p& x,
 
 }
 
-void FromFFTRep(ZZ_pX& x, FFTRep& y, long lo, long hi)
+
+
+#ifdef NTL_THREAD_BOOST
+
+void RevToFFTRep(FFTRep& y, const vec_ZZ_p& x, 
+                 long k, long lo, long hi, long offset)
+// computes an n = 2^k point convolution of X^offset*x[lo..hi] mod X^n-1
+// using "inverted" evaluation points.
+
+{
+   BasicThreadPool *pool = NTLThreadPool;
+
+   if (!pool || pool->active() || pool->NumThreads() == 1) {
+      basic_RevToFFTRep(y, x, k, lo, hi, offset);
+      return;
+   }
+
+   const ZZ_pFFTInfoT *FFTInfo = ZZ_p::GetFFTInfo();
+
+   long n, m;
+
+   if (k > FFTInfo->MaxRoot) 
+      ResourceError("Polynomial too big for FFT");
+
+   if (lo < 0)
+      LogicError("bad arg to ToFFTRep");
+
+   long nprimes = FFTInfo->NumPrimes;
+
+   hi = min(hi, x.length()-1);
+
+   y.SetSize(k);
+
+   n = 1L << k;
+
+   m = max(hi-lo + 1, 0);
+
+   const ZZ_p *xx = x.elts();
+
+   offset = offset & (n-1);
+
+   ZZ_pContext local_context;
+   local_context.save();
+
+   pool->exec_range(n,
+   [lo, m, n, offset, xx, &y, nprimes, &local_context, FFTInfo]
+   (long first, long last) {
+
+      local_context.restore();
+      ZZ_pTmpSpaceT *TmpSpace = ZZ_p::GetTmpSpace();
+      // TmpSpace is thread local!
+ 
+      vec_long& t = ModularRepBuf;
+      t.SetLength(nprimes);
+
+      long local_offset = (offset + first) & (n-1);
+
+      NTL_ZZ_pRegister(accum);
+
+      for (long j = first; j < last; j++) {
+         if (j >= m) {
+            for (long i = 0; i < nprimes; i++)
+               y.tbl[i][local_offset] = 0;
+         }
+         else {
+            accum = xx[j+lo];
+            for (long j1 = j + n; j1 < m; j1 += n)
+               add(accum, accum, xx[j1+lo]);
+            ToModularRep(t, accum, FFTInfo, TmpSpace);
+            for (long i = 0; i < nprimes; i++) {
+               y.tbl[i][local_offset] = t[i];
+   
+            }
+         }
+   
+         local_offset = (local_offset + 1) & (n-1);
+      }
+   } );
+
+   pool->exec_range(nprimes, 
+   [&y, k](long first, long last) {
+     for (long i = first; i < last; i++) {
+        long *yp = &y.tbl[i][0];
+        FFTRev1(yp, yp, k, i);
+     }
+   } );
+
+}
+
+
+#endif
+
+
+
+
+
+
+NTL_TBDECL(FromFFTRep)(ZZ_pX& x, FFTRep& y, long lo, long hi)
 
    // converts from FFT-representation to coefficient representation
    // only the coefficients lo..hi are computed
@@ -1608,7 +1911,80 @@ void FromFFTRep(ZZ_pX& x, FFTRep& y, long lo, long hi)
    x.normalize();
 }
 
-void RevFromFFTRep(vec_ZZ_p& x, FFTRep& y, long lo, long hi)
+#ifdef NTL_THREAD_BOOST
+
+void FromFFTRep(ZZ_pX& x, FFTRep& y, long lo, long hi)
+
+   // converts from FFT-representation to coefficient representation
+   // only the coefficients lo..hi are computed
+   
+
+{
+   BasicThreadPool *pool = NTLThreadPool;
+
+   if (!pool || pool->active() || pool->NumThreads() == 1) {
+      basic_FromFFTRep(x, y, lo, hi);
+      return;
+   }
+   const ZZ_pFFTInfoT *FFTInfo = ZZ_p::GetFFTInfo();
+
+   long k, n, l;
+
+   long nprimes = FFTInfo->NumPrimes;
+
+   k = y.k;
+   n = (1L << k);
+
+
+   pool->exec_range(nprimes,
+   [&y, k](long first, long last) {
+      for (long i = first; i < last; i++) {
+         long *yp = &y.tbl[i][0];
+         FFTRev1(yp, yp, k, i);
+      }
+   } );
+
+   hi = min(hi, n-1);
+   l = hi-lo+1;
+   l = max(l, 0);
+   x.rep.SetLength(l);
+   ZZ_p *xx = x.rep.elts();
+
+   ZZ_pContext local_context;
+   local_context.save();
+
+   pool->exec_range(l,
+   [lo, xx, &y, nprimes, &local_context, FFTInfo]
+   (long first, long last) {
+
+      local_context.restore();
+      ZZ_pTmpSpaceT *TmpSpace = ZZ_p::GetTmpSpace();
+      // TmpSpace is thread local!
+
+      vec_long& t = ModularRepBuf;
+      t.SetLength(nprimes);
+
+      for (long j = first; j < last; j++) {
+         for (long i = 0; i < nprimes; i++) 
+            t[i] = y.tbl[i][j+lo]; 
+   
+         FromModularRep(xx[j], t, FFTInfo, TmpSpace);
+      }
+   } );
+
+   x.normalize();
+}
+
+
+
+#endif
+
+
+
+
+
+
+NTL_TBDECL(RevFromFFTRep)(vec_ZZ_p& x, FFTRep& y, long lo, long hi)
 
    // converts from FFT-representation to coefficient representation
    // using "inverted" evaluation points.
@@ -1648,7 +2024,77 @@ void RevFromFFTRep(vec_ZZ_p& x, FFTRep& y, long lo, long hi)
    }
 }
 
-void NDFromFFTRep(ZZ_pX& x, const FFTRep& y, long lo, long hi, FFTRep& z)
+
+#ifdef NTL_THREAD_BOOST
+
+void RevFromFFTRep(vec_ZZ_p& x, FFTRep& y, long lo, long hi)
+{
+   BasicThreadPool *pool = NTLThreadPool;
+
+   if (!pool || pool->active() || pool->NumThreads() == 1) {
+      basic_RevFromFFTRep(x, y, lo, hi);
+      return;
+   }
+   const ZZ_pFFTInfoT *FFTInfo = ZZ_p::GetFFTInfo();
+
+   long k, n, l;
+
+   long nprimes = FFTInfo->NumPrimes;
+
+   k = y.k;
+   n = (1L << k);
+
+
+   pool->exec_range(nprimes,
+   [&y, k](long first, long last) {
+      for (long i = first; i < last; i++) {
+         long *yp = &y.tbl[i][0];
+         FFTFwd(yp, yp, k, i);
+      }
+   } );
+
+   hi = min(hi, n-1);
+   l = hi-lo+1;
+   l = max(l, 0);
+   x.SetLength(l);
+   ZZ_p *xx = x.elts();
+
+   ZZ_pContext local_context;
+   local_context.save();
+
+   pool->exec_range(l,
+   [lo, xx, &y, nprimes, &local_context, FFTInfo]
+   (long first, long last) {
+
+      local_context.restore();
+      ZZ_pTmpSpaceT *TmpSpace = ZZ_p::GetTmpSpace();
+      // TmpSpace is thread local!
+
+      vec_long& t = ModularRepBuf;
+      t.SetLength(nprimes);
+
+      for (long j = first; j < last; j++) {
+         for (long i = 0; i < nprimes; i++) 
+            t[i] = y.tbl[i][j+lo]; 
+   
+         FromModularRep(xx[j], t, FFTInfo, TmpSpace);
+      }
+   } );
+
+}
+
+
+
+
+#endif
+
+
+
+
+
+
+
+NTL_TBDECL(NDFromFFTRep)(ZZ_pX& x, const FFTRep& y, long lo, long hi, FFTRep& z)
 {
    const ZZ_pFFTInfoT *FFTInfo = ZZ_p::GetFFTInfo();
    ZZ_pTmpSpaceT *TmpSpace = ZZ_p::GetTmpSpace();
@@ -1687,13 +2133,83 @@ void NDFromFFTRep(ZZ_pX& x, const FFTRep& y, long lo, long hi, FFTRep& z)
    x.normalize();
 }
 
+#ifdef NTL_THREAD_BOOST
+
+void NDFromFFTRep(ZZ_pX& x, const FFTRep& y, long lo, long hi, FFTRep& z)
+
+   // converts from FFT-representation to coefficient representation
+   // only the coefficients lo..hi are computed
+   
+
+{
+   BasicThreadPool *pool = NTLThreadPool;
+
+   if (!pool || pool->active() || pool->NumThreads() == 1) {
+      basic_NDFromFFTRep(x, y, lo, hi, z);
+      return;
+   }
+   const ZZ_pFFTInfoT *FFTInfo = ZZ_p::GetFFTInfo();
+
+   long k, n, l;
+
+   long nprimes = FFTInfo->NumPrimes;
+
+   k = y.k;
+   n = (1L << k);
+
+   z.SetSize(k);
+
+   pool->exec_range(nprimes,
+   [&y, &z, k](long first, long last) {
+      for (long i = first; i < last; i++) {
+         long *zp = &z.tbl[i][0];
+         const long *yp = &y.tbl[i][0];
+         FFTRev1(zp, yp, k, i);
+      }
+   } );
+
+   hi = min(hi, n-1);
+   l = hi-lo+1;
+   l = max(l, 0);
+   x.rep.SetLength(l);
+   ZZ_p *xx = x.rep.elts();
+
+   ZZ_pContext local_context;
+   local_context.save();
+
+   pool->exec_range(l,
+   [lo, xx, &z, nprimes, &local_context, FFTInfo]
+   (long first, long last) {
+
+      local_context.restore();
+      ZZ_pTmpSpaceT *TmpSpace = ZZ_p::GetTmpSpace();
+      // TmpSpace is thread local!
+
+      vec_long& t = ModularRepBuf;
+      t.SetLength(nprimes);
+
+      for (long j = first; j < last; j++) {
+         for (long i = 0; i < nprimes; i++) 
+            t[i] = z.tbl[i][j+lo]; 
+   
+         FromModularRep(xx[j], t, FFTInfo, TmpSpace);
+      }
+   } );
+
+   x.normalize();
+}
+
+
+
+#endif
+
 void NDFromFFTRep(ZZ_pX& x, FFTRep& y, long lo, long hi)
 {
    FFTRep z;
    NDFromFFTRep(x, y, lo, hi, z);
 }
 
-void FromFFTRep(ZZ_p* x, FFTRep& y, long lo, long hi)
+NTL_TBDECL(FromFFTRep)(ZZ_p* x, FFTRep& y, long lo, long hi)
 
    // converts from FFT-representation to coefficient representation
    // only the coefficients lo..hi are computed
@@ -1732,7 +2248,75 @@ void FromFFTRep(ZZ_p* x, FFTRep& y, long lo, long hi)
 }
 
 
-void mul(FFTRep& z, const FFTRep& x, const FFTRep& y)
+#ifdef NTL_THREAD_BOOST
+
+void FromFFTRep(ZZ_p* x, FFTRep& y, long lo, long hi)
+
+   // converts from FFT-representation to coefficient representation
+   // only the coefficients lo..hi are computed
+   
+
+{
+   BasicThreadPool *pool = NTLThreadPool;
+
+   if (!pool || pool->active() || pool->NumThreads() == 1) {
+      basic_FromFFTRep(x, y, lo, hi);
+      return;
+   }
+
+   const ZZ_pFFTInfoT *FFTInfo = ZZ_p::GetFFTInfo();
+
+
+   long k, n, l;
+
+   k = y.k;
+   n = (1L << k);
+
+   long nprimes = FFTInfo->NumPrimes;
+
+
+   pool->exec_range(nprimes,
+   [&y, k](long first, long last) {
+      for (long i = first; i < last; i++) {
+         long *yp = &y.tbl[i][0];
+         FFTRev1(yp, yp, k, i);
+      }
+   } );
+
+
+   ZZ_pContext local_context;
+   local_context.save();
+
+   pool->exec_range(hi-lo+1,
+   [n, lo, x, &y, nprimes, &local_context, FFTInfo]
+   (long first, long last) {
+
+      local_context.restore();
+      ZZ_pTmpSpaceT *TmpSpace = ZZ_p::GetTmpSpace();
+      // TmpSpace is thread local!
+
+      vec_long& t = ModularRepBuf;
+      t.SetLength(nprimes);
+
+      for (long idx = first; idx < last; idx++) {
+         long j = lo + idx;
+
+         if (j >= n)
+            clear(x[j-lo]);
+         else {
+            for (long i = 0; i < nprimes; i++) 
+               t[i] = y.tbl[i][j]; 
+   
+            FromModularRep(x[j-lo], t, FFTInfo, TmpSpace);
+         }
+      }
+   } );
+}
+
+#endif
+
+
+NTL_TBDECL(mul)(FFTRep& z, const FFTRep& x, const FFTRep& y)
 {
    const ZZ_pFFTInfoT *FFTInfo = ZZ_p::GetFFTInfo();
 
@@ -1760,7 +2344,51 @@ void mul(FFTRep& z, const FFTRep& x, const FFTRep& y)
 
 }
 
-void sub(FFTRep& z, const FFTRep& x, const FFTRep& y)
+
+#ifdef NTL_THREAD_BOOST
+
+void mul(FFTRep& z, const FFTRep& x, const FFTRep& y)
+{
+   BasicThreadPool *pool = NTLThreadPool;
+
+   if (!pool || pool->active() || pool->NumThreads() == 1) {
+      basic_mul(z, x, y);
+      return;
+   }
+   const ZZ_pFFTInfoT *FFTInfo = ZZ_p::GetFFTInfo();
+
+   long k, n;
+
+   if (x.k != y.k) LogicError("FFT rep mismatch");
+
+   k = x.k;
+   n = 1L << k;
+
+   z.SetSize(k);
+
+   long nprimes = FFTInfo->NumPrimes;
+
+   pool->exec_range(nprimes,
+   [&x, &y, &z, n](long first, long last) {
+      for (long i  = first; i < last; i++) {
+         long *zp = &z.tbl[i][0];
+         const long *xp = &x.tbl[i][0];
+         const long *yp = &y.tbl[i][0];
+         long q = GetFFTPrime(i);
+         mulmod_t qinv = GetFFTPrimeInv(i);
+   
+         for (long j = 0; j < n; j++)
+            zp[j] = NormalizedMulMod(xp[j], yp[j], q, qinv);
+      }
+   } );
+
+}
+
+#endif
+
+
+
+NTL_TBDECL(sub)(FFTRep& z, const FFTRep& x, const FFTRep& y)
 {
    const ZZ_pFFTInfoT *FFTInfo = ZZ_p::GetFFTInfo();
 
@@ -1784,9 +2412,53 @@ void sub(FFTRep& z, const FFTRep& x, const FFTRep& y)
       for (j = 0; j < n; j++)
          zp[j] = SubMod(xp[j], yp[j], q);
    }
+
 }
 
-void add(FFTRep& z, const FFTRep& x, const FFTRep& y)
+
+#ifdef NTL_THREAD_BOOST
+
+void sub(FFTRep& z, const FFTRep& x, const FFTRep& y)
+{
+   BasicThreadPool *pool = NTLThreadPool;
+
+   if (!pool || pool->active() || pool->NumThreads() == 1) {
+      basic_sub(z, x, y);
+      return;
+   }
+   const ZZ_pFFTInfoT *FFTInfo = ZZ_p::GetFFTInfo();
+
+   long k, n;
+
+   if (x.k != y.k) LogicError("FFT rep mismatch");
+
+   k = x.k;
+   n = 1L << k;
+
+   z.SetSize(k);
+
+   long nprimes = FFTInfo->NumPrimes;
+
+   pool->exec_range(nprimes,
+   [&x, &y, &z, n](long first, long last) {
+      for (long i  = first; i < last; i++) {
+         long *zp = &z.tbl[i][0];
+         const long *xp = &x.tbl[i][0];
+         const long *yp = &y.tbl[i][0];
+         long q = GetFFTPrime(i);
+   
+         for (long j = 0; j < n; j++)
+            zp[j] = SubMod(xp[j], yp[j], q);
+      }
+   } );
+
+}
+
+#endif
+
+
+
+NTL_TBDECL(add)(FFTRep& z, const FFTRep& x, const FFTRep& y)
 {
    const ZZ_pFFTInfoT *FFTInfo = ZZ_p::GetFFTInfo();
 
@@ -1799,7 +2471,6 @@ void add(FFTRep& z, const FFTRep& x, const FFTRep& y)
 
    z.SetSize(k);
 
-
    long nprimes = FFTInfo->NumPrimes;
 
    for (i = 0; i < nprimes; i++) {
@@ -1811,10 +2482,56 @@ void add(FFTRep& z, const FFTRep& x, const FFTRep& y)
       for (j = 0; j < n; j++)
          zp[j] = AddMod(xp[j], yp[j], q);
    }
+
 }
 
 
-void reduce(FFTRep& x, const FFTRep& a, long k)
+#ifdef NTL_THREAD_BOOST
+
+void add(FFTRep& z, const FFTRep& x, const FFTRep& y)
+{
+   BasicThreadPool *pool = NTLThreadPool;
+
+   if (!pool || pool->active() || pool->NumThreads() == 1) {
+      basic_add(z, x, y);
+      return;
+   }
+   const ZZ_pFFTInfoT *FFTInfo = ZZ_p::GetFFTInfo();
+
+   long k, n;
+
+   if (x.k != y.k) LogicError("FFT rep mismatch");
+
+   k = x.k;
+   n = 1L << k;
+
+   z.SetSize(k);
+
+   long nprimes = FFTInfo->NumPrimes;
+
+   pool->exec_range(nprimes,
+   [&x, &y, &z, n](long first, long last) {
+      for (long i  = first; i < last; i++) {
+         long *zp = &z.tbl[i][0];
+         const long *xp = &x.tbl[i][0];
+         const long *yp = &y.tbl[i][0];
+         long q = GetFFTPrime(i);
+   
+         for (long j = 0; j < n; j++)
+            zp[j] = AddMod(xp[j], yp[j], q);
+      }
+   } );
+
+}
+
+#endif
+
+
+
+
+
+
+NTL_TBDECL(reduce)(FFTRep& x, const FFTRep& a, long k)
   // reduces a 2^l point FFT-rep to a 2^k point FFT-rep
   // input may alias output
 {
@@ -1842,7 +2559,51 @@ void reduce(FFTRep& x, const FFTRep& a, long k)
    }
 }
 
-void AddExpand(FFTRep& x, const FFTRep& a)
+
+#ifdef NTL_THREAD_BOOST
+
+void reduce(FFTRep& x, const FFTRep& a, long k)
+  // reduces a 2^l point FFT-rep to a 2^k point FFT-rep
+  // input may alias output
+{
+   BasicThreadPool *pool = NTLThreadPool;
+
+   if (!pool || pool->active() || pool->NumThreads() == 1) {
+      basic_reduce(x, a, k);
+      return;
+   }
+
+   const ZZ_pFFTInfoT *FFTInfo = ZZ_p::GetFFTInfo();
+
+   long l, n;
+
+   l = a.k;
+   n = 1L << k;
+
+   if (l < k) LogicError("reduce: bad operands");
+
+   x.SetSize(k);
+
+
+   long nprimes = FFTInfo->NumPrimes;
+
+   pool->exec_range(nprimes,
+   [&x, &a, n, l, k](long first, long last) {
+      for (long i = first; i < last; i++) {
+         const long *ap = &a.tbl[i][0];   
+         long *xp = &x.tbl[i][0];
+         for (long j = 0; j < n; j++) 
+            xp[j] = ap[j << (l-k)];
+      }
+   } );
+}
+
+#endif
+
+
+
+
+NTL_TBDECL(AddExpand)(FFTRep& x, const FFTRep& a)
 //  x = x + (an "expanded" version of a)
 {
    const ZZ_pFFTInfoT *FFTInfo = ZZ_p::GetFFTInfo();
@@ -1869,9 +2630,52 @@ void AddExpand(FFTRep& x, const FFTRep& a)
    }
 }
 
+#ifdef NTL_THREAD_BOOST
+
+void AddExpand(FFTRep& x, const FFTRep& a)
+//  x = x + (an "expanded" version of a)
+{
+   BasicThreadPool *pool = NTLThreadPool;
+
+   if (!pool || pool->active() || pool->NumThreads() == 1) {
+      basic_AddExpand(x, a);
+      return;
+   }
+   const ZZ_pFFTInfoT *FFTInfo = ZZ_p::GetFFTInfo();
+
+   long l, k, n;
+
+   l = x.k;
+   k = a.k;
+   n = 1L << k;
+
+   if (l < k) LogicError("AddExpand: bad args");
 
 
-void ToZZ_pXModRep(ZZ_pXModRep& y, const ZZ_pX& x, long lo, long hi)
+   long nprimes = FFTInfo->NumPrimes;
+
+   pool->exec_range(nprimes,
+   [&x, &a, n, l, k](long first, long last) {
+      for (long i = first; i < last; i++) {
+         long q = GetFFTPrime(i);
+         const long *ap = &a.tbl[i][0];
+         long *xp = &x.tbl[i][0];
+         for (long j = 0; j < n; j++) {
+            long j1 = j << (l-k);
+            xp[j1] = AddMod(xp[j1], ap[j], q);
+         }
+      }
+   } );
+}
+
+
+#endif
+
+
+
+
+
+NTL_TBDECL(ToZZ_pXModRep)(ZZ_pXModRep& y, const ZZ_pX& x, long lo, long hi)
 {
    const ZZ_pFFTInfoT *FFTInfo = ZZ_p::GetFFTInfo();
    ZZ_pTmpSpaceT *TmpSpace = ZZ_p::GetTmpSpace();
@@ -1900,10 +2704,65 @@ void ToZZ_pXModRep(ZZ_pXModRep& y, const ZZ_pX& x, long lo, long hi)
    }
 }
 
+#ifdef NTL_THREAD_BOOST
+void ToZZ_pXModRep(ZZ_pXModRep& y, const ZZ_pX& x, long lo, long hi)
+{
+   BasicThreadPool *pool = NTLThreadPool;
+
+   if (!pool || pool->active() || pool->NumThreads() == 1) {
+      basic_ToZZ_pXModRep(y, x, lo, hi);
+      return;
+   }
+
+   const ZZ_pFFTInfoT *FFTInfo = ZZ_p::GetFFTInfo();
+
+
+   long n;
+
+   long nprimes = FFTInfo->NumPrimes;
+
+   if (lo < 0)
+      LogicError("bad arg to ToZZ_pXModRep");
+
+   hi = min(hi, deg(x));
+   n = max(hi-lo+1, 0);
+
+   y.SetSize(n);
+
+   const ZZ_p *xx = x.rep.elts();
+
+   ZZ_pContext local_context;
+   local_context.save();
+
+   pool->exec_range(n,
+   [lo, xx, &y, nprimes, &local_context, FFTInfo](long first, long last) {
+
+      local_context.restore();
+      ZZ_pTmpSpaceT *TmpSpace = ZZ_p::GetTmpSpace();
+      // TmpSpace is thread local!
+
+      vec_long& t = ModularRepBuf;
+      t.SetLength(nprimes);
+
+      for (long j = first; j < last; j++) {
+         ToModularRep(t, xx[j+lo], FFTInfo, TmpSpace);
+         for (long i = 0; i < nprimes; i++) 
+            y.tbl[i][j] = t[i];
+      }
+   } );
+}
+#endif
+
+
+
+
+
+
+
 
 NTL_THREAD_LOCAL static vec_long ModRepBuf;
 
-void ToFFTRep(FFTRep& x, const ZZ_pXModRep& a, long k, long lo, long hi)
+NTL_TBDECL(ToFFTRep)(FFTRep& x, const ZZ_pXModRep& a, long k, long lo, long hi)
 {
    const ZZ_pFFTInfoT *FFTInfo = ZZ_p::GetFFTInfo();
 
@@ -1950,6 +2809,67 @@ void ToFFTRep(FFTRep& x, const ZZ_pXModRep& a, long k, long lo, long hi)
    }
 }
 
+#ifdef NTL_THREAD_BOOST
+void ToFFTRep(FFTRep& x, const ZZ_pXModRep& a, long k, long lo, long hi)
+{
+   BasicThreadPool *pool = NTLThreadPool;
+
+   if (!pool || pool->active() || pool->NumThreads() == 1) {
+      basic_ToFFTRep(x, a, k, lo, hi);
+      return;
+   }
+
+   const ZZ_pFFTInfoT *FFTInfo = ZZ_p::GetFFTInfo();
+
+   long n, m;
+
+   if (k < 0 || lo < 0)
+      LogicError("bad args to ToFFTRep");
+
+   if (hi > a.n-1) hi = a.n-1;
+
+   n = 1L << k;
+   m = max(hi-lo+1, 0);
+
+   if (m > n)
+      LogicError("bad args to ToFFTRep");
+
+
+   x.SetSize(k);
+
+   long nprimes = FFTInfo->NumPrimes;
+
+   if (m == 0) {
+      for (long i = 0; i < nprimes; i++) {
+         long *xp = &x.tbl[i][0];
+         for (long j = m; j < n; j++)
+            xp[j] = 0;
+      }
+   }
+   else {
+
+      pool->exec_range(nprimes,
+      [&x, &a, lo, m, n, k](long first, long last) { 
+
+         vec_long& s = ModRepBuf;
+         s.SetLength(n);
+         long *sp = s.elts();
+   
+         for (long i = first; i < last; i++) {
+            long *xp = &x.tbl[i][0];
+            long *ap = &a.tbl[i][0];
+            for (long j = 0; j < m; j++)
+               sp[j] = ap[lo+j];
+            for (long j = m; j < n; j++)
+               sp[j] = 0;
+            
+            FFTFwd(xp, sp, k, i);
+         }
+      } );
+
+   }
+}
+#endif
 
 
 
@@ -2711,15 +3631,20 @@ void PowerXMod(ZZ_pX& hh, const ZZ& e, const ZZ_pXModulus& F)
    long n = NumBits(e);
    long i;
 
-   ZZ_pX h;
+   ZZ_pX h, h1;
 
    h.SetMaxLength(F.n);
    set(h);
 
    for (i = n - 1; i >= 0; i--) {
-      SqrMod(h, h, F);
-      if (bit(e, i))
-         MulByXMod(h, h, F);
+      if (bit(e, i)) {
+         SqrMod(h1, h, F);
+         MulByXMod(h, h1, F);
+         // NOTE: MulByXMod gives much faster multicore performance
+         // when output does not alias input
+      }
+      else
+         SqrMod(h, h, F);
    }
 
    if (e < 0) InvMod(h, h, F);

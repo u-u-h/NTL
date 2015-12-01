@@ -104,6 +104,16 @@ using the configure script.
 
 #endif
 
+#if 0
+#define NTL_THREAD_BOOST
+
+/* Set if you want to compile NTL to exploit threads internally.
+ *
+ * To re-build after changing this flag: rm *.o; make ntl.a
+ */
+
+#endif
+#
 
 #if 0
 #define NTL_GMP_LIP

@@ -457,6 +457,7 @@ ZZ_pX SqrMod(const ZZ_pX& a, const ZZ_pX& f);
 void MulByXMod(ZZ_pX& x, const ZZ_pX& a, const ZZ_pX& f);
 ZZ_pX MulByXMod(const ZZ_pX& a, const ZZ_pX& f);
 // x = (a * X) mod f
+// NOTE: thread boosting enabled only if x does not alias a
 
 void InvMod(ZZ_pX& x, const ZZ_pX& a, const ZZ_pX& f);
 ZZ_pX InvMod(const ZZ_pX& a, const ZZ_pX& f);

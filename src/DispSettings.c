@@ -34,6 +34,10 @@ int main()
    cout << "NTL_EXCEPTIONS\n";
 #endif
 
+#ifdef NTL_THREAD_BOOST
+   cout << "NTL_THREAD_BOOST\n";
+#endif
+
 
 #ifdef NTL_GMP_LIP
    cout << "NTL_GMP_LIP\n";

@@ -137,7 +137,7 @@ O15=$(O14) vec_lzz_p.o vec_lzz_pE.o
 O16=$(O15) 
 O17=$(O16) 
 O18=$(O17) xdouble.o
-O19=$(O18) G_LLL_FP.o G_LLL_QP.o G_LLL_XD.o G_LLL_RR.o thread.o
+O19=$(O18) G_LLL_FP.o G_LLL_QP.o G_LLL_XD.o G_LLL_RR.o thread.o BasicThreadPool.o
 
 OBJ=$(O19)
 
@@ -162,7 +162,7 @@ S15=$(S14) vec_lzz_p.c vec_lzz_pE.c
 S16=$(S15) 
 S17=$(S16) 
 S18=$(S17) xdouble.c
-S19=$(S18) G_LLL_FP.c G_LLL_QP.c G_LLL_XD.c G_LLL_RR.c thread.c
+S19=$(S18) G_LLL_FP.c G_LLL_QP.c G_LLL_XD.c G_LLL_RR.c thread.c BasicThreadPool.c
 
 SRC = $(S19)
 
@@ -194,7 +194,7 @@ IN15=$(IN14) vec_vec_GF2.h vec_vec_GF2E.h vec_vec_RR.h vec_vec_ZZ.h
 IN16=$(IN15) vec_vec_ZZ_p.h vec_vec_ZZ_pE.h vec_vec_long.h vec_vec_lzz_p.h
 IN17=$(IN16) vec_vec_lzz_pE.h vec_xdouble.h xdouble.h config.h version.h
 IN18=$(IN17) def_config.h new.h vec_ulong.h vec_vec_ulong.h c_lip.h g_lip.h
-IN19=$(IN18) SmartPtr.h Lazy.h LazyTable.h thread.h 
+IN19=$(IN18) SmartPtr.h Lazy.h LazyTable.h thread.h  BasicThreadPool.h
 IN20=$(IN19) have_LL_no.h have_LL_yes.h have_builtin_clzl_no.h have_builtin_clzl_yes.h
 
 INCL=$(IN20)
@@ -228,7 +228,7 @@ SCRIPTS=$(SCRIPTS2)
 # auxilliary source
 
 MD=MakeDesc.c MakeDescAux.c newnames.c gen_gmp_aux.c CheckPCLMUL.c
-GT=GetTime1.c GetTime2.c GetTime3.c GetTime4.c GetTime5.c TestGetTime.c
+GT=GetTime0.c GetTime1.c GetTime2.c GetTime3.c GetTime4.c GetTime5.c TestGetTime.c
 GP=GetPID1.c GetPID2.c TestGetPID.c
 CH=CheckCLZL.c CheckCLZLAux.c CheckLL.c CheckLLAux.c
 
@@ -264,7 +264,7 @@ TX05=lzz_pXFactoring.txt mat_GF2.txt mat_GF2E.txt mat_RR.txt mat_ZZ.txt mat_ZZ_p
 TX06=mat_ZZ_pE.txt mat_lzz_p.txt mat_lzz_pE.txt mat_poly_ZZ.txt mat_poly_ZZ_p.txt
 TX07=mat_poly_lzz_p.txt matrix.txt pair.txt quad_float.txt tools.txt vec_GF2.txt
 TX08=vec_GF2E.txt vec_RR.txt vec_ZZ.txt vec_ZZ_p.txt vec_ZZ_pE.txt vec_lzz_p.txt
-TX09=vec_lzz_pE.txt vector.txt version.txt xdouble.txt
+TX09=vec_lzz_pE.txt vector.txt version.txt xdouble.txt  BasicThreadPool.txt
 
 TXFILES=$(TX01) $(TX02) $(TX03) $(TX04) $(TX05) $(TX06) $(TX07) $(TX08) $(TX09) 
 
@@ -527,7 +527,7 @@ winpack:
 
 WO1 = FFT.o  GetTime.o GetPID.o ctools.o ZZ.o ZZVec.o ZZ_p.o ZZ_pX.o
 WO2 = $(WO1) ZZ_pX1.o lip.o tools.o vec_ZZ.o vec_ZZ_p.o 
-WO3 = $(WO2) GF2.o WordVector.o vec_GF2.o GF2X.o GF2X1.o thread.o fileio.o
+WO3 = $(WO2) GF2.o WordVector.o vec_GF2.o GF2X.o GF2X1.o thread.o BasicThreadPool.o fileio.o
 
 WOBJ = $(WO3)
 

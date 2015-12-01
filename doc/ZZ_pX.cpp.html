@@ -1,7 +1,7 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <html>
 <head>
-<title>/Volumes/unix-files/u/ntl-new/ntl-6.1.0/doc/ZZ_pX.cpp.html</title>
+<title>/Volumes/unix-files/u/ntl-new/ntl-9.5.0/doc/ZZ_pX.cpp.html</title>
 <meta name="Generator" content="Vim/7.1">
 <meta http-equiv="content-type" content="text/html; charset=UTF-8">
 </head>
@@ -465,6 +465,7 @@ ZZ_pX SqrMod(<font color="#008b00"><b>const</b></font>&nbsp;ZZ_pX&amp; a, <font 
 <font color="#008b00"><b>void</b></font>&nbsp;MulByXMod(ZZ_pX&amp; x, <font color="#008b00"><b>const</b></font>&nbsp;ZZ_pX&amp; a, <font color="#008b00"><b>const</b></font>&nbsp;ZZ_pX&amp; f);<br>
 ZZ_pX MulByXMod(<font color="#008b00"><b>const</b></font>&nbsp;ZZ_pX&amp; a, <font color="#008b00"><b>const</b></font>&nbsp;ZZ_pX&amp; f);<br>
 <font color="#0000ed"><i>// x = (a * X) mod f</i></font><br>
+<font color="#0000ed"><i>// NOTE: thread boosting enabled only if x does not alias a</i></font><br>
 <br>
 <font color="#008b00"><b>void</b></font>&nbsp;InvMod(ZZ_pX&amp; x, <font color="#008b00"><b>const</b></font>&nbsp;ZZ_pX&amp; a, <font color="#008b00"><b>const</b></font>&nbsp;ZZ_pX&amp; f);<br>
 ZZ_pX InvMod(<font color="#008b00"><b>const</b></font>&nbsp;ZZ_pX&amp; a, <font color="#008b00"><b>const</b></font>&nbsp;ZZ_pX&amp; f);<br>

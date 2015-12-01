@@ -250,10 +250,16 @@ no idea how performance will compare.
 
 
 
+//  #define NTL_BRC_TEST
+//  Flag to test the cost of "bit reverse copy"
 
 
 #define NTL_FFT_BIGTAB_LIMIT (200)
+#ifndef NTL_BRC_TEST
 #define NTL_FFT_BIGTAB_MAXROOT (17)
+#else
+#define NTL_FFT_BIGTAB_MAXROOT (25)
+#endif
 // big tables are only used for the first NTL_FFT_BIGTAB_LIMIT primes,
 // and then only for k-values at most NTL_FFT_BIGTAB_MAXROOT
 
@@ -2024,6 +2030,9 @@ void LazyPrecompFFTMultipliers(long k, long q, mulmod_t qinv, const long *root, 
 
 
 
+#ifdef NTL_BRC_TEST
+bool BRC_test_flag = false;
+#endif
 
 
 void NTL_FFT_ROUTINE_TAB(long* A, const long* a, long k, const FFTPrimeInfo& info, long dir)
@@ -2064,10 +2073,17 @@ void NTL_FFT_ROUTINE_TAB(long* A, const long* a, long k, const FFTPrimeInfo& inf
    unsigned long *AA = AA_store.elts();
 
 
-
-   BitReverseCopy(AA, a, k);
-
    long n = 1L << k;
+
+#ifndef NTL_BRC_TEST
+   BitReverseCopy(AA, a, k);
+#else
+   if (BRC_test_flag) 
+      for (long i = 0; i < n; i++) AA[i] = a[i];
+   else
+      BitReverseCopy(AA, a, k);
+#endif
+
 
 
    /* we work with redundant representations, in the range [0, 4q) */

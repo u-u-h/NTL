@@ -821,8 +821,17 @@ void mul(ZZX& c, const ZZX& a, const ZZX& b)
    }
 
 
-   if (maxa + maxb >= 30 && 
-       SSRatio(deg(a), MaxBits(a), deg(b), MaxBits(b)) < 1.25)  {
+   double rat = SSRatio(deg(a), MaxBits(a), deg(b), MaxBits(b));
+   long k1 = (maxa + maxb)/2;
+
+   if ( 
+
+      (k1 >= 26  && rat < 1.40) || 
+      (k1 >= 53  && rat < 1.60) || 
+      (k1 >= 106 && rat < 1.80) || 
+      (k1 >= 212 && rat < 2.00) 
+
+   ) {
       SSMul(c, a, b);
    }
    else {
@@ -1010,12 +1019,22 @@ void sqr(ZZX& c, const ZZX& a)
    }
 
    long mba = MaxBits(a);
-   
-   if (2*maxa >= 30 && 
-       SSRatio(deg(a), mba, deg(a), mba) < 1.25) 
+   double rat = SSRatio(deg(a), mba, deg(a), mba);
+   long k1 = maxa;
+
+   if ( 
+
+      (k1 >= 26  && rat < 1.40) || 
+      (k1 >= 53  && rat < 1.60) || 
+      (k1 >= 106 && rat < 1.80) || 
+      (k1 >= 212 && rat < 2.00) 
+
+   ) {
       SSSqr(c, a);
-   else
+   }
+   else {
       HomSqr(c, a);
+   }
 }
 
 

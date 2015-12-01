@@ -57,7 +57,7 @@ vec_pair_zz_pEX_long NewDDF(const zz_pEX& f, const zz_pEX& h,
 // this routine uses external files to store some intermediate
 // results, which are removed if the routine terminates normally.
 // These files are stored in the current directory under names of the
-// form ddf-*-baby-* and ddf-*-giant-*.
+// form tmp-*.
 // The definition of "large" is controlled by the variable
 
       extern double zz_pEXFileThresh

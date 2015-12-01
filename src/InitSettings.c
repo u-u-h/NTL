@@ -34,6 +34,12 @@ int main()
    cout << "NTL_EXCEPTIONS=0\n";
 #endif
 
+#ifdef NTL_THREAD_BOOST
+   cout << "NTL_THREAD_BOOST=1\n";
+#else
+   cout << "NTL_THREAD_BOOST=0\n";
+#endif
+
 
 #ifdef NTL_LEGACY_SP_MULMOD
    cout << "NTL_LEGACY_SP_MULMOD=1\n";

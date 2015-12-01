@@ -21,6 +21,7 @@ cp GetPID2.c dos/src/GetPID.cpp
 cp mach_desc.win dos/include/NTL/mach_desc.h
 
 
+cp GetTime0.c dos/GetTime/GetTime0.cpp
 cp GetTime1.c dos/GetTime/GetTime1.cpp
 cp GetTime2.c dos/GetTime/GetTime2.cpp
 cp GetTime3.c dos/GetTime/GetTime3.cpp

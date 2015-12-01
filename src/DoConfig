@@ -69,6 +69,7 @@ sub BadPCLMUL {
 'NTL_LEGACY_SP_MULMOD'  => 'off',
 'NTL_THREADS'           => 'off',
 'NTL_EXCEPTIONS'        => 'off',
+'NTL_THREAD_BOOST'      => 'off',
 'NTL_GMP_LIP'           => 'off',
 'NTL_GF2X_LIB'          => 'off',
 'NTL_PCLMUL'            => 'off',
@@ -145,6 +146,19 @@ foreach $arg (@ARGV) {
 
 }
 
+# special processing: NTL_THREAD_BOOST => NTL_THREADS
+
+if ($ConfigFlag{'NTL_THREAD_BOOST'} eq 'on') {
+   $ConfigFlag{'NTL_THREADS'} = 'on';
+}
+
+if ($ConfigFlag{'NTL_THREADS'} eq 'on' && $ConfigFlag{'NTL_GMP_LIP'} eq 'off') {
+   die "Error: NTL_THREADS currently only available with NTL_GMP_LIP...sorry\n";
+}
+
+
+
+
 # special processing for NTL_THREADS: if this is set, we override
 # the default setting for CXXFLAGS
 
@@ -195,7 +209,7 @@ $MakeVal{'GMPI'} = '# ';
 $MakeVal{'GMPL'} = '# ';
 $MakeVal{'GMP'} =  '# ';
 
-if ($ConfigFlag{'NTL_GMP_LIP'} eq 'on' || $ConfigFlag{'NTL_GMP_HACK'} eq 'on') {
+if ($ConfigFlag{'NTL_GMP_LIP'} eq 'on') {
    $MakeVal{'GMP'} = '';
    if (exists($Variable{'DEF_PREFIX'}) ||
        exists($Variable{'GMP_PREFIX'}) ||
@@ -297,11 +311,6 @@ if ($ConfigSub{'NTL_X86_FIX'} + $ConfigSub{'NTL_NO_X86_FIX'} > 1) {
 
 }
 
-if ($ConfigSub{'NTL_GMP_HACK'} + $ConfigSub{'NTL_GMP_LIP'} > 1) {
-
-   die "Error: at most one of NTL_GMP_HACK and NTL_GMP_LIP may be on\n";
-
-}
 
 if ($ConfigSub{'NTL_AVOID_FLOAT'} + $ConfigSub{'NTL_LONG_LONG'} > 1) {
 
@@ -322,7 +331,6 @@ if ($ConfigSub{'NTL_GF2X_ALTCODE'} + $ConfigSub{'NTL_GF2X_ALTCODE1'} > 1) {
    die "Error: at most one of NTL_GF2X_ALTCODE and NTL_GF2X_ALTCODE1 may be on\n";
 
 }
-
 
 
 ######################################
