@@ -1438,97 +1438,46 @@ void ToModularRep(vec_long& x, const ZZ_p& a, const ZZ_pFFTInfoT *FFTInfo,
 }
 
 
-// NOTE: earlier versions used Kahan summation...
-// we no longer do this, as it is less portable than I thought.
-
-#ifdef NTL_HAVE_LL_TYPE
-
-#define LLSTRATEGY
-// this enables a faster implementation of FromModularRep:
-// profiling revealed that way too much time was being spent
-// in the calls to add(q, q, Q): these are all "constant time",
-// but there are too many of them...this leads to a 10-15% improvement
-// in running time for small to moderate size moduli 
-// (up to a couple thousand bits)
-
-
-#endif
-
-void FromModularRep(ZZ_p& x, const vec_long& a, const ZZ_pFFTInfoT *FFTInfo,
+void FromModularRep(ZZ_p& x, vec_long& avec, const ZZ_pFFTInfoT *FFTInfo,
                     ZZ_pTmpSpaceT *TmpSpace)
+// NOTE: a gets destroyed
+
 {
-   long nprimes = FFTInfo->NumPrimes;
-   NTL_ZZRegister(q);
    NTL_ZZRegister(t);
-   long i;
-   double y;
+   long * NTL_RESTRICT a = avec.elts();
 
    if (FFTInfo->crt_struct.special()) {
-       FFTInfo->crt_struct.eval(t, &a[0], TmpSpace->crt_tmp_vec);
+       FFTInfo->crt_struct.eval(t, a, TmpSpace->crt_tmp_vec);
       x.LoopHole() = t;
       return;
    }
+
+   long nprimes = FFTInfo->NumPrimes;
+   const long *u = FFTInfo->u.elts();
+   const long *prime = FFTInfo->prime.elts();
+   const mulmod_precon_t  *uqinv = FFTInfo->uqinv.elts();
+   const double *prime_recip = FFTInfo->prime_recip.elts();
       
+   double y = 0.0;
 
-   if (FFTInfo->QuickCRT) {
-      y = double(0L);
-      for (i = 0; i < nprimes; i++)
-         y += ((double) a[i])*FFTInfo->x[i];
-
-      conv(q, (y + 0.5)); 
-   } 
-   else {
-      long Q, r;
-      long qq;
-
-      y = double(0L);
-
-#ifdef LLSTRATEGY
-      NTL_ULL_TYPE q_ull = 0;
-      NTL_ZZRegister(q_ull_aux);
-#else
-      clear(q);
-#endif
-
-      for (i = 0; i < nprimes; i++) {
-         r = MulModPreconWithQuo(Q, a[i], FFTInfo->u[i], GetFFTPrime(i), FFTInfo->uqinv[i]);
-         // FIXME: add to documented interface?
-
-#ifdef LLSTRATEGY
-         q_ull += (unsigned long) Q;
-#else
-         add(q, q, Q); // this is too slow!!
-#endif
-         y += double(r)*GetFFTPrimeRecip(i);
-      }
-
-      qq = long(y + 0.5);
-
-#ifdef LLSTRATEGY
-      q_ull += (unsigned long) qq;
-#else
-      add(q, q, qq);
-#endif
-
-
-#ifdef LLSTRATEGY
-      if (q_ull >> NTL_BITS_PER_LONG) {
-         conv(q, (unsigned long) (q_ull >> NTL_BITS_PER_LONG));
-         LeftShift(q, q, NTL_BITS_PER_LONG);
-         conv(q_ull_aux, (unsigned long) q_ull);
-         add(q, q, q_ull_aux);
-      }
-      else {
-         conv(q, (unsigned long) q_ull);
-      }
-#endif
+   for (long i = 0; i < nprimes; i++) {
+      long r = MulModPrecon(a[i], u[i], prime[i], uqinv[i]);
+      a[i] = r;
+      y += double(r)*prime_recip[i];
    }
 
-   FFTInfo->crt_struct.eval(t, &a[0], TmpSpace->crt_tmp_vec);
+   long q = long(y + 0.5);
+
+   FFTInfo->crt_struct.eval(t, a, TmpSpace->crt_tmp_vec);
 
    MulAddTo(t, FFTInfo->MinusMModP, q);
+   // TODO: this MulAddTo could be folded into the above
+   // crt_struct.eval as just another product to accumulate...
+   // but, savings would be marginal and a number of interfaces
+   // would have to be modified...
 
-   conv(x, t);
+   // montgomery
+   FFTInfo->reduce_struct.eval(x.LoopHole(), t);
 }
 
 
@@ -2760,13 +2709,11 @@ void ToZZ_pXModRep(ZZ_pXModRep& y, const ZZ_pX& x, long lo, long hi)
 
 
 
-NTL_THREAD_LOCAL static vec_long ModRepBuf;
 
 NTL_TBDECL(ToFFTRep)(FFTRep& x, const ZZ_pXModRep& a, long k, long lo, long hi)
 {
    const ZZ_pFFTInfoT *FFTInfo = ZZ_p::GetFFTInfo();
 
-   vec_long& s = ModRepBuf;
    long n, m, i, j;
 
    if (k < 0 || lo < 0)
@@ -2793,18 +2740,15 @@ NTL_TBDECL(ToFFTRep)(FFTRep& x, const ZZ_pXModRep& a, long k, long lo, long hi)
       }
    }
    else {
-      s.SetLength(n);
-      long *sp = s.elts();
-
       for (i = 0; i < nprimes; i++) {
          long *xp = &x.tbl[i][0];
          long *ap = &a.tbl[i][0];
          for (j = 0; j < m; j++)
-            sp[j] = ap[lo+j];
+            xp[j] = ap[lo+j];
          for (j = m; j < n; j++)
-            sp[j] = 0;
+            xp[j] = 0;
          
-         FFTFwd(xp, sp, k, i);
+         FFTFwd(xp, xp, k, i);
       }
    }
 }
@@ -2851,25 +2795,67 @@ void ToFFTRep(FFTRep& x, const ZZ_pXModRep& a, long k, long lo, long hi)
       pool->exec_range(nprimes,
       [&x, &a, lo, m, n, k](long first, long last) { 
 
-         vec_long& s = ModRepBuf;
-         s.SetLength(n);
-         long *sp = s.elts();
-   
          for (long i = first; i < last; i++) {
             long *xp = &x.tbl[i][0];
             long *ap = &a.tbl[i][0];
             for (long j = 0; j < m; j++)
-               sp[j] = ap[lo+j];
+               xp[j] = ap[lo+j];
             for (long j = m; j < n; j++)
-               sp[j] = 0;
+               xp[j] = 0;
             
-            FFTFwd(xp, sp, k, i);
+            FFTFwd(xp, xp, k, i);
          }
       } );
 
    }
 }
 #endif
+
+
+
+void FromFFTRep(ZZ_pXModRep& x, const FFTRep& a)
+{
+   const ZZ_pFFTInfoT *FFTInfo = ZZ_p::GetFFTInfo();
+   long nprimes = FFTInfo->NumPrimes;
+   long k = a.k;
+   long n = 1L << k;
+
+   x.SetSize(n);
+   for (long i = 0; i < nprimes; i++) {
+      long *xp = &x.tbl[i][0];
+      long *ap = &a.tbl[i][0];
+      FFTRev1(xp, ap, k, i);
+   }
+}
+
+void FromZZ_pXModRep(ZZ_pX& x, const ZZ_pXModRep& a, long lo, long hi)
+{
+   const ZZ_pFFTInfoT *FFTInfo = ZZ_p::GetFFTInfo();
+   ZZ_pTmpSpaceT *TmpSpace = ZZ_p::GetTmpSpace();
+
+   long n = a.n;
+   long nprimes = FFTInfo->NumPrimes;
+
+   vec_long& t = ModularRepBuf;
+   t.SetLength(nprimes);
+
+   hi = min(hi, n-1);
+   long l = hi-lo+1;
+   l = max(l, 0);
+   x.rep.SetLength(l);
+
+   for (long j = 0; j < l; j++) {
+      for (long i = 0; i < nprimes; i++)
+         t[i] = a.tbl[i][j+lo];
+
+      FromModularRep(x.rep[j], t, FFTInfo, TmpSpace);
+   }
+
+   x.normalize();
+}
+
+
+
 
 
 

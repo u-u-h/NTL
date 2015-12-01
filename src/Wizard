@@ -28,8 +28,9 @@ mkdir small/include
 mkdir small/include/NTL
 
 cp MulTimeTest.c small/src
-cp PolyTimeTest.c small/src
 cp Poly1TimeTest.c small/src
+cp Poly2TimeTest.c small/src
+cp Poly3TimeTest.c small/src
 cp GF2XTimeTest.c small/src
 cp InitSettings.c small/src
 cp DispSettings.c small/src

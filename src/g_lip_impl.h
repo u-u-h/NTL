@@ -343,6 +343,15 @@ inline void COUNT_BITS(long& cnt, mp_limb_t a)
 
 
 
+#if (defined(NTL_HAVE_LL_TYPE) && NTL_ZZ_NBITS == NTL_BITS_PER_LONG)
+#define NTL_VIABLE_LL
+#endif
+
+#if (defined(NTL_CRT_ALTCODE) || defined(NTL_CRT_ALTCODE_SMALL))
+#define NTL_TBL_CRT
+#endif
+
+
 
 class _ntl_gbigint_watcher {
 public:
@@ -1327,8 +1336,8 @@ void _ntl_glshift(_ntl_gbigint n, long k, _ntl_gbigint *rres)
 
    GET_SIZE_NEG(sn, nneg, n);
 
-   limb_cnt = k/NTL_ZZ_NBITS;
-   k %= NTL_ZZ_NBITS;
+   limb_cnt = ((unsigned long) k) / NTL_ZZ_NBITS;
+   k = ((unsigned long) k) % NTL_ZZ_NBITS;
    sres = sn + limb_cnt;
    if (k != 0) sres++;
 
@@ -1386,7 +1395,7 @@ void _ntl_grshift(_ntl_gbigint n, long k, _ntl_gbigint *rres)
 
    GET_SIZE_NEG(sn, nneg, n);
 
-   limb_cnt = k/NTL_ZZ_NBITS;
+   limb_cnt = ((unsigned long) k) / NTL_ZZ_NBITS;
 
    sres = sn - limb_cnt;
 
@@ -1405,7 +1414,7 @@ void _ntl_grshift(_ntl_gbigint n, long k, _ntl_gbigint *rres)
    ndata = DATA(n);
    resdata = DATA(res);
    ndata1 = ndata + limb_cnt;
-   k %= NTL_ZZ_NBITS;
+   k = ((unsigned long) k) % NTL_ZZ_NBITS;
 
    if (k != 0) {
       mpn_rshift(resdata, ndata1, sres, k);
@@ -3504,6 +3513,8 @@ void redc(_ntl_gbigint T, _ntl_gbigint N, long m, mp_limb_t inv,
    for (i = 0; i < m; i++) {
       q = Tdata[i]*inv;
       d = mpn_addmul_1(Tdata+i, Ndata, n, q);
+
+      // (c, Tdata[i+n]) = c + d + Tdata[i+n]
       t = Tdata[i+n] + d;
       Tdata[i+n] = t + c;
       if (t < d || (c == 1 && t + c  == 0)) 
@@ -3525,6 +3536,142 @@ void redc(_ntl_gbigint T, _ntl_gbigint N, long m, mp_limb_t inv,
 
    SIZE(res) = i;
    SIZE(T) = 0;
+}
+
+
+// This montgomery code is for external consumption...
+// This is currently used in the CRT reconstruction step
+// for ZZ_pX arithmetic.  It gives a nontrivial speedup
+// for smallish p (up to a few hundred bits)
+
+class _ntl_reduce_struct_montgomery : public _ntl_reduce_struct {
+public:
+   long m;
+   mp_limb_t inv;
+   _ntl_gbigint_wrapped N;
+
+   void eval(_ntl_gbigint *rres, _ntl_gbigint *TT);
+   void adjust(_ntl_gbigint *x);
+};
+
+
+
+// DIRT: may not work with non-empty "nails"
+
+void _ntl_reduce_struct_montgomery::eval(_ntl_gbigint *rres, _ntl_gbigint *TT)
+{
+   long n, sT, i;
+   mp_limb_t *Ndata, *Tdata, *resdata, q, d, t, c;
+   _ntl_gbigint res, T;
+
+
+   T = *TT;
+
+   // quick zero test, in case of sparse polynomials
+   if (ZEROP(T)) {
+      _ntl_gzero(rres);
+      return;
+   }
+
+   n = SIZE(N);
+   Ndata = DATA(N);
+
+   if (MustAlloc(T, m+n)) {
+      _ntl_gsetlength(&T, m+n);
+      *TT = T;
+   }
+
+   res = *rres;
+   if (MustAlloc(res, n)) {
+      _ntl_gsetlength(&res, n);
+      *rres = res;
+   }
+
+   sT = SIZE(T);
+   Tdata = DATA(T);
+   resdata = DATA(res);
+
+   for (i = sT; i < m+n; i++)
+      Tdata[i] = 0;
+
+   c = 0;
+   for (i = 0; i < m; i++) {
+      q = Tdata[i]*inv;
+      d = mpn_addmul_1(Tdata+i, Ndata, n, q);
+
+      // (c, Tdata[i+n]) = c + d + Tdata[i+n]
+      t = Tdata[i+n] + d;
+      Tdata[i+n] = t + c;
+      if (t < d || (c == 1 && t + c  == 0)) 
+         c = 1;
+      else
+         c = 0;
+   }
+
+   if (c || mpn_cmp(Tdata + m, Ndata, n) >= 0) {
+      mpn_sub_n(resdata, Tdata + m, Ndata, n);
+   }
+   else {
+      for (i = 0; i < n; i++)
+         resdata[i] = Tdata[m + i];
+   }
+
+   i = n;
+   STRIP(i, resdata);
+
+   SIZE(res) = i;
+   SIZE(T) = 0;
+}
+
+// this will adjust the given number by multiplying by the
+// montgomery scaling factor
+
+void _ntl_reduce_struct_montgomery::adjust(_ntl_gbigint *x)
+{
+   GRegister(tmp);
+   _ntl_glshift(*x, m*NTL_ZZ_NBITS, &tmp); 
+   _ntl_gmod(tmp, N, x);
+}
+
+
+
+
+class _ntl_reduce_struct_plain : public _ntl_reduce_struct {
+public:
+   _ntl_gbigint_wrapped N;
+
+   void eval(_ntl_gbigint *rres, _ntl_gbigint *TT)
+   {
+      _ntl_gmod(*TT, N, rres);
+   }
+
+   void adjust(_ntl_gbigint *x) { }
+};
+
+// assumption: all values passed to eval for montgomery reduction
+// are in [0, modulus*excess]
+
+_ntl_reduce_struct *
+_ntl_reduce_struct_build(_ntl_gbigint modulus, _ntl_gbigint excess)
+{
+   if (_ntl_godd(modulus)) {
+      UniquePtr<_ntl_reduce_struct_montgomery> C;
+      C.make();
+
+      C->m = _ntl_gsize(excess);
+      C->inv = neg_inv_mod_limb(DATA(modulus)[0]);
+      _ntl_gcopy(modulus, &C->N);
+
+      return C.release();
+   }
+   else {
+      UniquePtr<_ntl_reduce_struct_plain> C;
+      C.make();
+
+      _ntl_gcopy(modulus, &C->N);
+
+      return C.release();
+   }
 }
 
 
@@ -4177,6 +4324,28 @@ public:
    void eval(_ntl_gbigint *x, const long *b, _ntl_tmp_vec *tmp_vec);
 };
 
+
+#if (defined(NTL_VIABLE_LL) && defined(NTL_TBL_CRT))
+
+class _ntl_crt_struct_tbl : public _ntl_crt_struct {
+public:
+   Unique2DArray<mp_limb_t> v;
+   long n;
+   long sz;
+
+   bool special();
+   void insert(long i, _ntl_gbigint m);
+   _ntl_tmp_vec *extract();
+   _ntl_tmp_vec *fetch();
+   void eval(_ntl_gbigint *x, const long *b, _ntl_tmp_vec *tmp_vec);
+
+};
+
+#endif
+
+
+
+
 class _ntl_crt_struct_fast : public _ntl_crt_struct {
 public:
    long n;
@@ -4310,6 +4479,53 @@ _ntl_crt_struct_build(long n, _ntl_gbigint p, long (*primes)(long))
       return C.release();
    }
 
+
+#if (defined(NTL_VIABLE_LL))
+
+// alternative CRT code is viable
+
+#if (defined(NTL_CRT_ALTCODE))
+// unconditionally use the alternative code,
+// as the tuning wizard says its preferable for larger moduli
+
+   {
+      UniquePtr<_ntl_crt_struct_tbl> C;
+      C.make();
+      C->n = n;
+      C->sz = SIZE(p);
+      C->v.SetDims(C->sz, C->n);
+
+      return C.release();
+   }
+#elif (defined(NTL_CRT_ALTCODE_SMALL))
+// use the alternative code on "smaller" moduli...
+// For now, this should trigger on 64-bit machines
+// when n <= 16 (so modulus less than about 450 bits).
+// Unless the "long long" compiler support is really bad,
+// this should be a win.
+
+   if (NTL_BITS_PER_LONG-NTL_SP_NBITS == 4 && n <= 16) {
+      UniquePtr<_ntl_crt_struct_tbl> C;
+      C.make();
+      C->n = n;
+      C->sz = SIZE(p);
+      C->v.SetDims(C->sz, C->n);
+
+      return C.release();
+   }
+   else {
+      UniquePtr<_ntl_crt_struct_basic> C;
+      C.make();
+
+      long i;
+
+      C->n = n;
+      C->v.SetLength(n);
+      C->sbuf = SIZE(p)+2;
+
+      return C.release();
+   }
+#else
    {
       UniquePtr<_ntl_crt_struct_basic> C;
       C.make();
@@ -4322,6 +4538,23 @@ _ntl_crt_struct_build(long n, _ntl_gbigint p, long (*primes)(long))
 
       return C.release();
    }
+#endif
+
+#else
+   {
+      UniquePtr<_ntl_crt_struct_basic> C;
+      C.make();
+
+      long i;
+
+      C->n = n;
+      C->v.SetLength(n);
+      C->sbuf = SIZE(p)+2;
+
+      return C.release();
+   }
+#endif
+
 }
 
 /* extracts existing tmp_vec, if possible -- read/write operation */
@@ -4330,6 +4563,13 @@ _ntl_tmp_vec *_ntl_crt_struct_basic::extract()
 {
    return 0;
 }
+
+#if (defined(NTL_VIABLE_LL) && defined(NTL_TBL_CRT))
+_ntl_tmp_vec *_ntl_crt_struct_tbl::extract()
+{
+   return 0;
+}
+#endif
 
 _ntl_tmp_vec *_ntl_crt_struct_fast::extract()
 {
@@ -4346,6 +4586,13 @@ _ntl_tmp_vec *_ntl_crt_struct_basic::fetch()
 {
    return 0;
 }
+
+#if (defined(NTL_VIABLE_LL) && defined(NTL_TBL_CRT))
+_ntl_tmp_vec *_ntl_crt_struct_tbl::fetch()
+{
+   return 0;
+}
+#endif
 
 _ntl_tmp_vec *_ntl_crt_struct_fast::fetch()
 {
@@ -4365,6 +4612,25 @@ void _ntl_crt_struct_basic::insert(long i, _ntl_gbigint m)
 {
    _ntl_gcopy(m, &v[i]);
 }
+
+#if (defined(NTL_VIABLE_LL) && defined(NTL_TBL_CRT))
+void _ntl_crt_struct_tbl::insert(long i, _ntl_gbigint m)
+{
+   if (i < 0 || i >= n) LogicError("insert: bad args");
+
+   if (!m) 
+      for (long j = 0; j < sz; j++) v[j][i] = 0;
+   else {
+      long sm = SIZE(m);
+      if (sm < 0 || sm > sz) LogicError("insert: bad args");
+      const mp_limb_t *mdata = DATA(m);
+      for (long j = 0; j < sm; j++) 
+         v[j][i] = mdata[j];
+      for (long j = sm; j < sz; j++)
+         v[j][i] = 0;
+   }
+}
+#endif
 
 void _ntl_crt_struct_fast::insert(long i, _ntl_gbigint m)
 {
@@ -4457,6 +4723,206 @@ void _ntl_crt_struct_basic::eval(_ntl_gbigint *x, const long *b, _ntl_tmp_vec *g
 }
 
 
+#if (defined(NTL_VIABLE_LL) && defined(NTL_TBL_CRT))
+
+#define CRT_ALTCODE_UNROLL (1)
+
+void _ntl_crt_struct_tbl::eval(_ntl_gbigint *x, const long *b, _ntl_tmp_vec *generic_tmp_vec)
+{
+   long sx;
+   _ntl_gbigint x1;
+   long i, j;
+
+   // quick test for zero vector
+   // most likely, they are either all zero (if we are working 
+   // with some sparse polynomials) or none of them are zero,
+   // so in the general case, this should go fast
+   if (!b[0]) {
+      i = 1;
+      while (i < n && !b[i]) i++;
+      if (i >= n) {
+         _ntl_gzero(x);
+         return;
+      }
+   }
+
+   sx = sz + 2;
+   _ntl_gsetlength(x, sx);
+   x1 = *x;
+   mp_limb_t * NTL_RESTRICT xx = DATA(x1);
+
+
+   for (i = 0; i < sx; i++) xx[i] = 0;
+
+   const long Bnd = 1L << (NTL_BITS_PER_LONG-NTL_SP_NBITS);
+
+   if (n <= Bnd) {
+
+      for (i = 0; i < sz; i++) {
+         const mp_limb_t *row = v[i];
+
+         NTL_ULL_TYPE acc = ((NTL_ULL_TYPE) row[0]) * ((NTL_ULL_TYPE) (mp_limb_t) b[0]);
+
+#if (CRT_ALTCODE_UNROLL && NTL_BITS_PER_LONG-NTL_SP_NBITS == 4)
+         switch (n) {
+         case 16: acc += ((NTL_ULL_TYPE) row[16-1]) * ((NTL_ULL_TYPE) (mp_limb_t) b[16-1]);
+         case 15: acc += ((NTL_ULL_TYPE) row[15-1]) * ((NTL_ULL_TYPE) (mp_limb_t) b[15-1]);
+         case 14: acc += ((NTL_ULL_TYPE) row[14-1]) * ((NTL_ULL_TYPE) (mp_limb_t) b[14-1]);
+         case 13: acc += ((NTL_ULL_TYPE) row[13-1]) * ((NTL_ULL_TYPE) (mp_limb_t) b[13-1]);
+         case 12: acc += ((NTL_ULL_TYPE) row[12-1]) * ((NTL_ULL_TYPE) (mp_limb_t) b[12-1]);
+         case 11: acc += ((NTL_ULL_TYPE) row[11-1]) * ((NTL_ULL_TYPE) (mp_limb_t) b[11-1]);
+         case 10: acc += ((NTL_ULL_TYPE) row[10-1]) * ((NTL_ULL_TYPE) (mp_limb_t) b[10-1]);
+         case 9: acc += ((NTL_ULL_TYPE) row[9-1]) * ((NTL_ULL_TYPE) (mp_limb_t) b[9-1]);
+         case 8: acc += ((NTL_ULL_TYPE) row[8-1]) * ((NTL_ULL_TYPE) (mp_limb_t) b[8-1]);
+         case 7: acc += ((NTL_ULL_TYPE) row[7-1]) * ((NTL_ULL_TYPE) (mp_limb_t) b[7-1]);
+         case 6: acc += ((NTL_ULL_TYPE) row[6-1]) * ((NTL_ULL_TYPE) (mp_limb_t) b[6-1]);
+         case 5: acc += ((NTL_ULL_TYPE) row[5-1]) * ((NTL_ULL_TYPE) (mp_limb_t) b[5-1]);
+         case 4: acc += ((NTL_ULL_TYPE) row[4-1]) * ((NTL_ULL_TYPE) (mp_limb_t) b[4-1]);
+         case 3: acc += ((NTL_ULL_TYPE) row[3-1]) * ((NTL_ULL_TYPE) (mp_limb_t) b[3-1]);
+         case 2: acc += ((NTL_ULL_TYPE) row[2-1]) * ((NTL_ULL_TYPE) (mp_limb_t) b[2-1]);
+         }
+#else
+         for (j = 1; j < n; j++) 
+            acc += ((NTL_ULL_TYPE) row[j]) * ((NTL_ULL_TYPE) (mp_limb_t) b[j]);
+#endif
+
+         acc += xx[i];
+
+         xx[i] = acc;
+         xx[i+1] = (acc >> NTL_BITS_PER_LONG);
+      }
+   }
+   else {
+      for (i = 0; i < sz; i++) {
+         const mp_limb_t *row = v[i];
+
+         NTL_ULL_TYPE acc21;
+         mp_limb_t acc0;
+
+         {
+            NTL_ULL_TYPE sum = ((NTL_ULL_TYPE) row[0]) * ((NTL_ULL_TYPE) (mp_limb_t) b[0]);
+
+#if (CRT_ALTCODE_UNROLL && NTL_BITS_PER_LONG-NTL_SP_NBITS == 4)
+            sum += ((NTL_ULL_TYPE) row[1]) * ((NTL_ULL_TYPE) (mp_limb_t) b[1]);
+            sum += ((NTL_ULL_TYPE) row[2]) * ((NTL_ULL_TYPE) (mp_limb_t) b[2]);
+            sum += ((NTL_ULL_TYPE) row[3]) * ((NTL_ULL_TYPE) (mp_limb_t) b[3]);
+            sum += ((NTL_ULL_TYPE) row[4]) * ((NTL_ULL_TYPE) (mp_limb_t) b[4]);
+            sum += ((NTL_ULL_TYPE) row[5]) * ((NTL_ULL_TYPE) (mp_limb_t) b[5]);
+            sum += ((NTL_ULL_TYPE) row[6]) * ((NTL_ULL_TYPE) (mp_limb_t) b[6]);
+            sum += ((NTL_ULL_TYPE) row[7]) * ((NTL_ULL_TYPE) (mp_limb_t) b[7]);
+            sum += ((NTL_ULL_TYPE) row[8]) * ((NTL_ULL_TYPE) (mp_limb_t) b[8]);
+            sum += ((NTL_ULL_TYPE) row[9]) * ((NTL_ULL_TYPE) (mp_limb_t) b[9]);
+            sum += ((NTL_ULL_TYPE) row[10]) * ((NTL_ULL_TYPE) (mp_limb_t) b[10]);
+            sum += ((NTL_ULL_TYPE) row[11]) * ((NTL_ULL_TYPE) (mp_limb_t) b[11]);
+            sum += ((NTL_ULL_TYPE) row[12]) * ((NTL_ULL_TYPE) (mp_limb_t) b[12]);
+            sum += ((NTL_ULL_TYPE) row[13]) * ((NTL_ULL_TYPE) (mp_limb_t) b[13]);
+            sum += ((NTL_ULL_TYPE) row[14]) * ((NTL_ULL_TYPE) (mp_limb_t) b[14]);
+            sum += ((NTL_ULL_TYPE) row[15]) * ((NTL_ULL_TYPE) (mp_limb_t) b[15]);
+#elif (CRT_ALTCODE_UNROLL && NTL_BITS_PER_LONG-NTL_SP_NBITS == 2)
+            sum += ((NTL_ULL_TYPE) row[1]) * ((NTL_ULL_TYPE) (mp_limb_t) b[1]);
+            sum += ((NTL_ULL_TYPE) row[2]) * ((NTL_ULL_TYPE) (mp_limb_t) b[2]);
+            sum += ((NTL_ULL_TYPE) row[3]) * ((NTL_ULL_TYPE) (mp_limb_t) b[3]);
+#else
+            for (j = 1; j < Bnd; j++)
+               sum += ((NTL_ULL_TYPE) row[j]) * ((NTL_ULL_TYPE) (mp_limb_t) b[j]);
+#endif
+
+            acc21 = sum >> NTL_BITS_PER_LONG;
+            acc0 = sum;
+         }
+
+         const mp_limb_t *ap = row;
+         const long *tp = b;
+
+         long m;
+         for (m = n-Bnd, ap += Bnd, tp += Bnd; m >= Bnd; m -= Bnd, ap += Bnd, tp += Bnd) {
+
+            NTL_ULL_TYPE sum = ((NTL_ULL_TYPE) ap[0]) * ((NTL_ULL_TYPE) (mp_limb_t) tp[0]);
+
+#if (CRT_ALTCODE_UNROLL && NTL_BITS_PER_LONG-NTL_SP_NBITS == 4)
+            sum += ((NTL_ULL_TYPE) ap[1]) * ((NTL_ULL_TYPE) (mp_limb_t) tp[1]);
+            sum += ((NTL_ULL_TYPE) ap[2]) * ((NTL_ULL_TYPE) (mp_limb_t) tp[2]);
+            sum += ((NTL_ULL_TYPE) ap[3]) * ((NTL_ULL_TYPE) (mp_limb_t) tp[3]);
+            sum += ((NTL_ULL_TYPE) ap[4]) * ((NTL_ULL_TYPE) (mp_limb_t) tp[4]);
+            sum += ((NTL_ULL_TYPE) ap[5]) * ((NTL_ULL_TYPE) (mp_limb_t) tp[5]);
+            sum += ((NTL_ULL_TYPE) ap[6]) * ((NTL_ULL_TYPE) (mp_limb_t) tp[6]);
+            sum += ((NTL_ULL_TYPE) ap[7]) * ((NTL_ULL_TYPE) (mp_limb_t) tp[7]);
+            sum += ((NTL_ULL_TYPE) ap[8]) * ((NTL_ULL_TYPE) (mp_limb_t) tp[8]);
+            sum += ((NTL_ULL_TYPE) ap[9]) * ((NTL_ULL_TYPE) (mp_limb_t) tp[9]);
+            sum += ((NTL_ULL_TYPE) ap[10]) * ((NTL_ULL_TYPE) (mp_limb_t) tp[10]);
+            sum += ((NTL_ULL_TYPE) ap[11]) * ((NTL_ULL_TYPE) (mp_limb_t) tp[11]);
+            sum += ((NTL_ULL_TYPE) ap[12]) * ((NTL_ULL_TYPE) (mp_limb_t) tp[12]);
+            sum += ((NTL_ULL_TYPE) ap[13]) * ((NTL_ULL_TYPE) (mp_limb_t) tp[13]);
+            sum += ((NTL_ULL_TYPE) ap[14]) * ((NTL_ULL_TYPE) (mp_limb_t) tp[14]);
+            sum += ((NTL_ULL_TYPE) ap[15]) * ((NTL_ULL_TYPE) (mp_limb_t) tp[15]);
+#elif (CRT_ALTCODE_UNROLL && NTL_BITS_PER_LONG-NTL_SP_NBITS == 2)
+            sum += ((NTL_ULL_TYPE) ap[1]) * ((NTL_ULL_TYPE) (mp_limb_t) tp[1]);
+            sum += ((NTL_ULL_TYPE) ap[2]) * ((NTL_ULL_TYPE) (mp_limb_t) tp[2]);
+            sum += ((NTL_ULL_TYPE) ap[3]) * ((NTL_ULL_TYPE) (mp_limb_t) tp[3]);
+#else
+            for (long j = 1; j < Bnd; j++)
+               sum += ((NTL_ULL_TYPE) ap[j]) * ((NTL_ULL_TYPE) (mp_limb_t) tp[j]);
+#endif
+
+            mp_limb_t sum1 = sum >> NTL_BITS_PER_LONG;
+            mp_limb_t sum0 = sum;
+            NTL_ULL_TYPE carry_acc0 = ((NTL_ULL_TYPE) acc0) + ((NTL_ULL_TYPE) sum0);
+            mp_limb_t carry = carry_acc0 >> NTL_BITS_PER_LONG;
+            acc0 = carry_acc0;
+            NTL_ULL_TYPE x = ((NTL_ULL_TYPE) sum1) + ((NTL_ULL_TYPE) carry);
+            acc21 += x;
+         }
+
+         if (m > 0) {
+            NTL_ULL_TYPE sum = ((NTL_ULL_TYPE) ap[0]) * ((NTL_ULL_TYPE) (mp_limb_t) tp[0]);
+
+#if (CRT_ALTCODE_UNROLL && NTL_BITS_PER_LONG-NTL_SP_NBITS == 4)
+            switch (m) {
+            case 15:  sum += ((NTL_ULL_TYPE) ap[15-1]) * ((NTL_ULL_TYPE) (mp_limb_t) tp[15-1]);
+            case 14:  sum += ((NTL_ULL_TYPE) ap[14-1]) * ((NTL_ULL_TYPE) (mp_limb_t) tp[14-1]);
+            case 13:  sum += ((NTL_ULL_TYPE) ap[13-1]) * ((NTL_ULL_TYPE) (mp_limb_t) tp[13-1]);
+            case 12:  sum += ((NTL_ULL_TYPE) ap[12-1]) * ((NTL_ULL_TYPE) (mp_limb_t) tp[12-1]);
+            case 11:  sum += ((NTL_ULL_TYPE) ap[11-1]) * ((NTL_ULL_TYPE) (mp_limb_t) tp[11-1]);
+            case 10:  sum += ((NTL_ULL_TYPE) ap[10-1]) * ((NTL_ULL_TYPE) (mp_limb_t) tp[10-1]);
+            case 9:  sum += ((NTL_ULL_TYPE) ap[9-1]) * ((NTL_ULL_TYPE) (mp_limb_t) tp[9-1]);
+            case 8:  sum += ((NTL_ULL_TYPE) ap[8-1]) * ((NTL_ULL_TYPE) (mp_limb_t) tp[8-1]);
+            case 7:  sum += ((NTL_ULL_TYPE) ap[7-1]) * ((NTL_ULL_TYPE) (mp_limb_t) tp[7-1]);
+            case 6:  sum += ((NTL_ULL_TYPE) ap[6-1]) * ((NTL_ULL_TYPE) (mp_limb_t) tp[6-1]);
+            case 5:  sum += ((NTL_ULL_TYPE) ap[5-1]) * ((NTL_ULL_TYPE) (mp_limb_t) tp[5-1]);
+            case 4:  sum += ((NTL_ULL_TYPE) ap[4-1]) * ((NTL_ULL_TYPE) (mp_limb_t) tp[4-1]);
+            case 3:  sum += ((NTL_ULL_TYPE) ap[3-1]) * ((NTL_ULL_TYPE) (mp_limb_t) tp[3-1]);
+            case 2:  sum += ((NTL_ULL_TYPE) ap[2-1]) * ((NTL_ULL_TYPE) (mp_limb_t) tp[2-1]);
+            }
+#else
+            for (m--, ap++, tp++; m > 0; m--, ap++, tp++)
+               sum += ((NTL_ULL_TYPE) ap[0]) * ((NTL_ULL_TYPE) (mp_limb_t) tp[0]);
+#endif
+
+            mp_limb_t sum1 = sum >> NTL_BITS_PER_LONG;
+            mp_limb_t sum0 = sum;
+            NTL_ULL_TYPE carry_acc0 = ((NTL_ULL_TYPE) acc0) + ((NTL_ULL_TYPE) sum0);
+            mp_limb_t carry = carry_acc0 >> NTL_BITS_PER_LONG;
+            acc0 = carry_acc0;
+            NTL_ULL_TYPE x = ((NTL_ULL_TYPE) sum1) + ((NTL_ULL_TYPE) carry);
+            acc21 += x;
+         }
+
+         NTL_ULL_TYPE xxi = ((NTL_ULL_TYPE) xx[i]) + ((NTL_ULL_TYPE) acc0); 
+         xx[i] =  xxi;
+         mp_limb_t carry = xxi >> NTL_BITS_PER_LONG;
+
+         acc21 += ((NTL_ULL_TYPE) xx[i+1]) + ((NTL_ULL_TYPE) carry);
+         xx[i+1] = acc21;
+         xx[i+2] = acc21 >> NTL_BITS_PER_LONG;
+      }
+   }
+
+
+   while (sx > 0 && xx[sx-1] == 0) sx--;
+   SIZE(x1) = sx;
+}
+#endif
+
 void _ntl_crt_struct_fast::eval(_ntl_gbigint *x, const long *b, _ntl_tmp_vec *generic_tmp_vec)
 {
    _ntl_tmp_vec_crt_fast *tmp_vec = static_cast<_ntl_tmp_vec_crt_fast*> (generic_tmp_vec);
@@ -4501,6 +4967,12 @@ void _ntl_crt_struct_fast::eval(_ntl_gbigint *x, const long *b, _ntl_tmp_vec *ge
 
 
 bool _ntl_crt_struct_basic::special()  { return false; }
+
+#if (defined(NTL_VIABLE_LL) && defined(NTL_TBL_CRT))
+bool _ntl_crt_struct_tbl::special()  { return false; }
+#endif
+
+
 bool _ntl_crt_struct_fast::special()   { return true; }
 
 
@@ -4561,7 +5033,7 @@ public:
 
 
 
-#ifdef NTL_TBL_REM
+#if (defined(NTL_VIABLE_LL) && defined(NTL_TBL_REM))
 
 class _ntl_rem_struct_tbl : public _ntl_rem_struct {
 public:
@@ -4582,11 +5054,8 @@ public:
 _ntl_rem_struct *_ntl_rem_struct_build(long n, _ntl_gbigint modulus, long (*p)(long))
 {
 
-#ifdef NTL_TBL_REM
-   if (n <= 800
-          && sizeof(NTL_ULL_TYPE) == 2*sizeof(long) 
-          && NTL_ZZ_NBITS == NTL_BITS_PER_LONG) {
-
+#if (defined(NTL_VIABLE_LL) && defined(NTL_TBL_REM))
+   if (n <= 800) {
       UniqueArray<long> q;
       UniqueArray<mp_limb_t> inv_primes;
       Unique2DArray<mp_limb_t> tbl;
@@ -4630,11 +5099,9 @@ _ntl_rem_struct *_ntl_rem_struct_build(long n, _ntl_gbigint modulus, long (*p)(l
 
       return R.release();
    }
-
-
 #endif
 
-   if ( n >= 32 && n <= 256) {
+   if (n >= 32 && n <= 256) {
       UniqueArray<long> q;
       long i, j;
       long levels, vec_len;
@@ -4818,7 +5285,7 @@ _ntl_tmp_vec *_ntl_rem_struct_basic::fetch()
 }
 
 
-#ifdef NTL_TBL_REM
+#if (defined(NTL_VIABLE_LL) && defined(NTL_TBL_REM))
 
 _ntl_tmp_vec *_ntl_rem_struct_tbl::fetch()
 {
@@ -4873,7 +5340,8 @@ _ntl_tmp_vec *_ntl_rem_struct_medium::fetch()
 
 
 
-#ifdef NTL_TBL_REM
+
+#if (defined(NTL_VIABLE_LL) && defined(NTL_TBL_REM))
 
 static inline 
 mp_limb_t tbl_red_21(mp_limb_t hi, mp_limb_t lo, long d, mp_limb_t dinv)

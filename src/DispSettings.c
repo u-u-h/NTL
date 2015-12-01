@@ -152,6 +152,14 @@ cout << "Performance Options:\n";
    cout << "NTL_TBL_REM_LL\n";
 #endif
 
+#ifdef NTL_CRT_ALTCODE
+   cout << "NTL_CRT_ALTCODE\n";
+#endif
+
+#ifdef NTL_CRT_ALTCODE_SMALL
+   cout << "NTL_CRT_ALTCODE_SMALL\n";
+#endif
+
 
 #ifdef NTL_GF2X_ALTCODE
    cout << "NTL_GF2X_ALTCODE\n";

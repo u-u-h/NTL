@@ -290,6 +290,13 @@ cerr << "Performance Options:\n";
    cerr << "NTL_TBL_REM_LL\n";
 #endif
 
+#ifdef NTL_CRT_ALTCODE
+   cerr << "NTL_CRT_ALTCODE\n";
+#endif
+
+#ifdef NTL_CRT_ALTCODE_SMALL
+   cerr << "NTL_CRT_ALTCODE_SMALL\n";
+#endif
 
 #ifdef NTL_GF2X_ALTCODE
    cerr << "NTL_GF2X_ALTCODE\n";
@@ -321,6 +328,7 @@ cerr << "Performance Options:\n";
       cerr << ".";
       RandomLen(p, k);
       ZZ_p::init(p);  
+    
 
       ZZ_pX a, b, c, c1;
 
@@ -418,6 +426,7 @@ cerr << "Performance Options:\n";
    RandomLen(p, k);
 
    ZZ_p::init(p);
+   if (!IsOdd(p)) p++;
 
    ZZ_pX j1, j2, j3;
 

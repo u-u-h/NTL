@@ -102,9 +102,11 @@ and then destroyed in the old array.  This obviously is much more expensive
 that NTL's strategy.  However, the new "move semantics", introduced in C++11,
 mitigate this issue somewhat.
 
-Because of NTL's relocatability requirement, it is not recommended to
-use NTL vectors over classes coming from the standard library, which
-may not satisfy the requirement.
+Because of NTL's relocatability requirement, it is not recommended to use NTL
+vectors over classes coming from the standard library, which may not satisfy
+the requirement.  In those cases, you could either use an STL vector, or use an
+NTL vector and wrap the suspect classes in an NTL smart pointer of some kind
+(SmartPtr or OptionalVal).
 
 Note also that Facebook's open source "folly" library also provides
 a vector class that uses realloc in a manner very similar to NTL's vector class.

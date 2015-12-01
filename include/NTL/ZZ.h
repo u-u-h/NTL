@@ -569,6 +569,27 @@ inline void ZZ_TmpVecAdapter::fetch(const ZZ_RemStructAdapter& rem_struct)
 }
 
 
+// montgomery
+class ZZ_ReduceStructAdapter {
+public:
+   UniquePtr<_ntl_reduce_struct> rep;
+
+   void init(const ZZ& p, const ZZ& excess)
+   {
+      rep.reset(_ntl_reduce_struct_build(p.rep, excess.rep));
+   }
+
+   void eval(ZZ& x, ZZ& a) const
+   {
+      rep->eval(&x.rep, &a.rep);
+   }
+
+   void adjust(ZZ& x) const
+   {
+      rep->adjust(&x.rep);
+   }
+};
+
 
 
 /*******************************************************

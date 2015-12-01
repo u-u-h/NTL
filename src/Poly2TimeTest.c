@@ -56,17 +56,25 @@ printf("\n");
 int main()
 {
 
-#if (defined(NTL_TBL_REM) && defined(NTL_GMP_LIP))
-
-   if (sizeof(NTL_ULL_TYPE) != 2*sizeof(long) ||
-       NTL_ZZ_NBITS != NTL_BITS_PER_LONG) {
+#if (defined(NTL_TBL_REM) && defined(NTL_GMP_LIP) && !(defined(NTL_HAVE_LL_TYPE) && NTL_ZZ_NBITS == NTL_BITS_PER_LONG))
+   {
       printf("999999999999999 ");
       print_flag();
       return 0;
    }
 
+#endif
+
+#if (defined(NTL_TBL_REM_LL) && !defined(NTL_GMP_LIP) && !defined(NTL_HAVE_LL_TYPE))
+   {
+      printf("999999999999999 ");
+      print_flag();
+      return 0;
+   }
 
 #endif
+
+   SetSeed(ZZ(0));
 
    long n, k;
 
@@ -76,6 +84,7 @@ int main()
    ZZ p;
 
    RandomLen(p, k);
+   if (!IsOdd(p)) p++;
 
 
    ZZ_p::init(p);         // initialization
@@ -119,24 +128,25 @@ int main()
    long iter;
 
    n = 1024;
-   k = 1024;
+   k = 1600;
    RandomLen(p, k);
+   if (!IsOdd(p)) p++;
 
    ZZ_p::init(p);
 
-   ZZ_pX j1, j2, j3;
+   ZZ_pX a;
+   random(a, n);
+   long da = deg(a);
 
-   random(j1, n);
-   random(j2, n);
-
-   mul(j3, j1, j2);
+   ZZ_pXModRep modrep;
+   ToZZ_pXModRep(modrep, a, 0, da);
 
    iter = 1;
 
    do {
      t = GetTime();
      for (i = 0; i < iter; i++) {
-        FFTMul(j3, j1, j2);
+        ToZZ_pXModRep(modrep, a, 0, da);
      }
      t = GetTime() - t;
      iter = 2*iter;
@@ -144,7 +154,7 @@ int main()
 
    iter = iter/2;
 
-   iter = long((2/t)*iter) + 1;
+   iter = long((3/t)*iter) + 1;
 
    double tvec[5];
    long w;
@@ -152,7 +162,7 @@ int main()
    for (w = 0; w < 5; w++) {
      t = GetTime();
      for (i = 0; i < iter; i++) {
-        FFTMul(j3, j1, j2);
+        ToZZ_pXModRep(modrep, a, 0, da);
      }
      t = GetTime() - t;
      tvec[w] = t;

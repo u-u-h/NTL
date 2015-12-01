@@ -63,6 +63,8 @@ int main()
    long n, i, j, iter, s, k;
    double t;
 
+   SetSeed(ZZ(0));
+
 
    for (i = 0; i < 10000; i++) {
       GF2X a, b, c, d;
@@ -109,7 +111,7 @@ int main()
 
    iter = iter/2;
 
-   iter = long((2/t)*iter) + 1;
+   iter = long((3/t)*iter) + 1;
 
    double tvec[5];
    long w;

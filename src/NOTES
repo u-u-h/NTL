@@ -1,5 +1,6 @@
 
 
+
 FIXME: maybe it would make more sense to take the +1/-1 logic
 out of [cg]_lip_impl block_construct routines and just put it in
 the caller: the ZZ_p and ZZVec BlockConstruct stuff: add 1 there...
@@ -17,9 +18,6 @@ TODO list:
      * add template functions clear(), to clear multiple
        entries in a Vec or Poly.  The important thing is
        to provide specialized ones for Vec<GF2> and GF2X.
-     * RandomBnd_long is too slow...it is not a great idea
-       to work with ZZ's for large n...better strategy would be 
-       simple "expected 2 iterations" strategy.
 
 
 

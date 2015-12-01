@@ -6695,3 +6695,28 @@ _ntl_zsubmul(_ntl_verylong x, _ntl_verylong y,  _ntl_verylong *ww)
 }
 
 
+// boilerplate to provide compatible interface
+class _ntl_reduce_struct_plain : public _ntl_reduce_struct {
+public:
+   _ntl_verylong_wrapped N;
+
+   void eval(_ntl_verylong *rres, _ntl_verylong *TT)
+   {
+      _ntl_zmod(*TT, N, rres);
+   }
+
+   void adjust(_ntl_verylong *x) { }
+};
+
+_ntl_reduce_struct *
+_ntl_reduce_struct_build(_ntl_verylong modulus, _ntl_verylong excess)
+{
+      UniquePtr<_ntl_reduce_struct_plain> C;
+      C.make();
+
+      _ntl_zcopy(modulus, &C->N);
+
+      return C.release();
+}
+
+

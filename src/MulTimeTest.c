@@ -63,6 +63,8 @@ int main()
 
 #endif
 
+   SetSeed(ZZ(0));
+
    long i, k;
 
    
@@ -128,7 +130,7 @@ int main()
 
 
    iter = iter/2;
-   iter = long((2/t)*iter) + 1;
+   iter = long((3/t)*iter) + 1;
 
    double tvec[5];
    long w;

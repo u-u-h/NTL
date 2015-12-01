@@ -516,6 +516,34 @@ using the configure script.
 #endif
 
 
+#if @{NTL_CRT_ALTCODE}
+#define NTL_CRT_ALTCODE
+
+/*
+ * Employs an alternative CRT strategy.
+ * Only relevant with GMP.
+ * Seems to be marginally faster on some x86_64 platforms.
+ *
+ *   To re-build after changing this flag: 
+ *      rm lip.o; make ntl.a
+ */
+
+#endif
+
+#if @{NTL_CRT_ALTCODE_SMALL}
+#define NTL_CRT_ALTCODE_SMALL
+
+/*
+ * Employs an alternative CRT strategy for small moduli.
+ * Only relevant with GMP.
+ * Seems to be marginally faster on some x86_64 platforms.
+ *
+ *   To re-build after changing this flag: 
+ *      rm lip.o; make ntl.a
+ */
+
+#endif
+
 
 #if @{NTL_GF2X_ALTCODE}
 #define NTL_GF2X_ALTCODE

@@ -24,17 +24,20 @@ public:
 
    long NumPrimes;
    long MaxRoot;  
-   bool QuickCRT;
    ZZ MinusMModP;  //  -M mod p, M = product of primes
    ZZ_CRTStructAdapter crt_struct;
    ZZ_RemStructAdapter rem_struct;
 
 
    // the following arrays are indexed 0..NumPrimes-1
-   // q = FFTPrime[i]
-   Vec<double> x;     // u/q, where u = (M/q)^{-1} mod q
-   Vec<long> u;            // u, as above
+   // q[i] = FFTPrime[i]
+   Vec<long> prime;  // prime[i] = q[i]
+   Vec<double> prime_recip;  // prime_recip[i] = 1/double(q[i])
+   Vec<long> u;  // u[i] = (M/q[i])^{-1} mod q[i]
    Vec<mulmod_precon_t> uqinv;
+
+   ZZ_ReduceStructAdapter reduce_struct;
+
 };
 
 

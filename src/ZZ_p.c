@@ -96,28 +96,27 @@ void ZZ_p::DoInstall()
          ResourceError("modulus too big");
 
 
-      if (8.0*fn*(fn+48) <= NTL_FDOUBLE_PRECISION/double(NTL_SP_BOUND))
-         FFTInfo->QuickCRT = true;
-      else
-         FFTInfo->QuickCRT = false;
-      
-      // FIXME: some of this stuff does not need to be initialized
-      // at all if FFTInfo->crt_struct.special()
-
-      FFTInfo->x.SetLength(n);
-      FFTInfo->u.SetLength(n);
-      FFTInfo->uqinv.SetLength(n);
 
       FFTInfo->rem_struct.init(n, ZZ_pInfo->p, GetFFTPrime);
-
       FFTInfo->crt_struct.init(n, ZZ_pInfo->p, GetFFTPrime);
 
       if (!FFTInfo->crt_struct.special()) {
+         FFTInfo->prime.SetLength(n);
+         FFTInfo->prime_recip.SetLength(n);
+         FFTInfo->u.SetLength(n);
+         FFTInfo->uqinv.SetLength(n);
+
+         // montgomery
+         FFTInfo->reduce_struct.init(ZZ_pInfo->p, ZZ(n) << NTL_SP_NBITS);
+
          ZZ qq, rr;
 
          DivRem(qq, rr, M, ZZ_pInfo->p);
 
          NegateMod(FFTInfo->MinusMModP, rr, ZZ_pInfo->p);
+
+         // montgomery
+         FFTInfo->reduce_struct.adjust(FFTInfo->MinusMModP);
 
          for (i = 0; i < n; i++) {
             q = GetFFTPrime(i);
@@ -134,16 +133,17 @@ void ZZ_p::DoInstall()
             t = rem(M1, q);
             t = InvMod(t, q);
 
-            mul(M3, M2, t);
-            rem(M3, M3, ZZ_pInfo->p);
+            // montgomery
+            FFTInfo->reduce_struct.adjust(M2);
 
-            FFTInfo->crt_struct.insert(i, M3);
+            FFTInfo->crt_struct.insert(i, M2);
 
-
-            FFTInfo->x[i] = ((double) t)/((double) q);
+            FFTInfo->prime[i] = q;
+            FFTInfo->prime_recip[i] = 1/double(q);
             FFTInfo->u[i] = t;
             FFTInfo->uqinv[i] = PrepMulModPrecon(FFTInfo->u[i], q, qinv);
          }
+
       }
 
       tmps = MakeSmart<ZZ_pTmpSpaceT>();

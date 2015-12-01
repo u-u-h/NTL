@@ -51,6 +51,16 @@ _ntl_rem_struct *
 _ntl_rem_struct_build(long n, NTL_verylong modulus, long (*p)(long));
 
 
+// montgomery
+class _ntl_reduce_struct {
+public:
+   virtual ~_ntl_reduce_struct() { }
+   virtual void eval(NTL_verylong *x, NTL_verylong *a) = 0;
+   virtual void adjust(NTL_verylong *x) = 0;
+};
+
+_ntl_reduce_struct *
+_ntl_reduce_struct_build(NTL_verylong modulus, NTL_verylong excess);
 
 
 

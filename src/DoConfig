@@ -31,6 +31,7 @@ sub BadPCLMUL {
 
 'CXX'	      => 'g++',
 'CXXFLAGS'    => '-g -O2',
+'CXXAUTOFLAGS'=> '',
 'AR'	      => 'ar',
 'ARFLAGS'     => 'ruv',
 'RANLIB'      => 'ranlib',
@@ -82,6 +83,8 @@ sub BadPCLMUL {
 'NTL_AVOID_BRANCHING'   => 'off',
 'NTL_TBL_REM'           => 'off',
 'NTL_TBL_REM_LL'        => 'off',
+'NTL_CRT_ALTCODE'       => 'off',
+'NTL_CRT_ALTCODE_SMALL' => 'off',
 'NTL_GF2X_NOINLINE'     => 'off',
 'NTL_GF2X_ALTCODE'      => 'off',
 'NTL_GF2X_ALTCODE1'     => 'off',
@@ -157,27 +160,25 @@ if ($ConfigFlag{'NTL_THREADS'} eq 'on' && $ConfigFlag{'NTL_GMP_LIP'} eq 'off') {
 }
 
 
-
-
 # special processing for NTL_THREADS: if this is set, we override
-# the default setting for CXXFLAGS
+# the default setting for CXXAUTOFLAGS
 
-if ($ConfigFlag{'NTL_THREADS'} eq 'on' && !exists($Variable{'CXXFLAGS'})) {
-   $MakeVal{'CXXFLAGS'} = $MakeVal{'CXXFLAGS'} . ' -std=c++11 -pthread';
+if ($ConfigFlag{'NTL_THREADS'} eq 'on' && !exists($Variable{'CXXAUTOFLAGS'})) {
+   $MakeVal{'CXXAUTOFLAGS'} = $MakeVal{'CXXAUTOFLAGS'} . ' -std=c++11 -pthread';
 }
 
 # special processing for NTL_EXCEPTIONS: similar to processing
 # for NTL_THREADS
 
-if ($ConfigFlag{'NTL_EXCEPTIONS'} eq 'on' && $ConfigFlag{'NTL_THREADS'} eq 'off' && !exists($Variable{'CXXFLAGS'})) {
-   $MakeVal{'CXXFLAGS'} = $MakeVal{'CXXFLAGS'} . ' -std=c++11';
+if ($ConfigFlag{'NTL_EXCEPTIONS'} eq 'on' && $ConfigFlag{'NTL_THREADS'} eq 'off' && !exists($Variable{'CXXAUTOFLAGS'})) {
+   $MakeVal{'CXXAUTOFLAGS'} = $MakeVal{'CXXAUTOFLAGS'} . ' -std=c++11';
 }
 
 
-# special processing for NTL_PCLMUL: if set, add -mpclmul to CXXFLAGS
+# special processing for NTL_PCLMUL: if set, add -mpclmul to CXXAUTOFLAGS
 
-if ($ConfigFlag{'NTL_PCLMUL'} eq 'on' && !exists($Variable{'CXXFLAGS'})) {
-   $MakeVal{'CXXFLAGS'} = $MakeVal{'CXXFLAGS'} . ' -mpclmul';
+if ($ConfigFlag{'NTL_PCLMUL'} eq 'on' && !exists($Variable{'CXXAUTOFLAGS'})) {
+   $MakeVal{'CXXAUTOFLAGS'} = $MakeVal{'CXXAUTOFLAGS'} . ' -mpclmul';
 }
 
 
@@ -372,7 +373,7 @@ while ($line = <CFILE>) {
 close(CFILE);
 close(CFILEOUT);
 
-print("CXXFLAGS=\"$MakeVal{'CXXFLAGS'}\"\n");
+print("CXXAUTOFLAGS=\"$MakeVal{'CXXAUTOFLAGS'}\"\n");
 
 if ($nowrite == 0) {
 

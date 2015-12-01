@@ -1,6 +1,5 @@
 
 #include <NTL/ZZ_pX.h>
-#include <NTL/FFT.h>
 
 #include <cstdio>
 
@@ -36,27 +35,16 @@ double clean_data(double *t)
    return z;
 }
 
-
 void print_flag()
 {
 
-#if defined(NTL_FFT_LAZYMUL)
-printf("FFT_LAZYMUL ");
+
+#if (defined(NTL_CRT_ALTCODE))
+printf("CRT_ALTCODE ");
+#else
+printf("DEFAULT ");
 #endif
 
-#if defined(NTL_SPMM_ULL)
-printf("SPMM_ULL ");
-#elif defined(NTL_SPMM_ASM)
-printf("SPMM_ASM ");
-#endif
-
-#if defined(NTL_AVOID_BRANCHING)
-printf("AVOID_BRANCHING ");
-#endif
-
-#if defined(NTL_FFT_BIGTAB)
-printf("FFT_BIGTAB ");
-#endif
 
 printf("\n");
 
@@ -66,23 +54,23 @@ printf("\n");
 int main()
 {
 
-#ifdef NTL_SPMM_ULL
+#if (defined(NTL_CRT_ALTCODE) && !(defined(NTL_HAVE_LL_TYPE) && NTL_ZZ_NBITS == NTL_BITS_PER_LONG))
 
-   if (sizeof(NTL_ULL_TYPE) < 2*sizeof(long)) {
+   {
       printf("999999999999999 ");
       print_flag();
       return 0;
    }
 
+
 #endif
 
    SetSeed(ZZ(0));
 
-
    long n, k;
 
-   n = 200;
-   k = 10*NTL_ZZ_NBITS;
+   n = 1024;
+   k = 30*NTL_SP_NBITS; 
 
    ZZ p;
 
@@ -99,7 +87,6 @@ int main()
    random(f, n);    // f =             "   "
 
    SetCoeff(f, n);  // Sets coefficient of X^n to 1
-   
 
    // For doing arithmetic mod f quickly, one must pre-compute
    // some information.
@@ -128,46 +115,34 @@ int main()
    }
 
    double t;
-   long i, j;
+   long i;
    long iter;
 
-   const int nprimes = 30;
-   const long L = 12; 
-   const long N = 1L << L;
-   long r;
-   
+   ZZ_pX a, b, c;
+   random(a, n);
+   random(b, n);
+   long da = deg(a);
+   long db = deg(b);
+   long dc = da + db;
+   long l = NextPowerOfTwo(dc+1);
 
-   for (r = 0; r < nprimes; r++) UseFFTPrime(r);
+   FFTRep arep, brep, crep;
+   ToFFTRep(arep, a, l, 0, da);
+   ToFFTRep(brep, b, l, 0, db);
 
-   vec_long aa[nprimes], AA[nprimes];
+   mul(crep, arep, brep);
 
-   for (r = 0; r < nprimes; r++) {
-      aa[r].SetLength(N);
-      AA[r].SetLength(N);
+   ZZ_pXModRep modrep;
+   FromFFTRep(modrep, crep);
 
-      for (i = 0; i < N; i++)
-         aa[r][i] = RandomBnd(GetFFTPrime(r));
-
-
-      FFTFwd(AA[r].elts(), aa[r].elts(), L, r);
-      FFTRev1(AA[r].elts(), AA[r].elts(), L, r);
-   }
+   FromZZ_pXModRep(c, modrep, 0, dc);
 
    iter = 1;
 
    do {
      t = GetTime();
-     for (j = 0; j < iter; j++) {
-        for (r = 0; r < nprimes; r++) {
-           long *AAp = AA[r].elts();
-           long *aap = aa[r].elts();
-           long q = GetFFTPrime(r);
-           mulmod_t qinv = GetFFTPrimeInv(r);
-
-           FFTFwd(AAp, aap, L, r);
-           FFTRev1(AAp, aap, L, r);
-           for (i = 0; i < N; i++) AAp[i] = NormalizedMulMod(AAp[i], aap[i], q, qinv);
-        }
+     for (i = 0; i < iter; i++) {
+        FromZZ_pXModRep(c, modrep, 0, dc);
      }
      t = GetTime() - t;
      iter = 2*iter;
@@ -177,31 +152,28 @@ int main()
 
    iter = long((3/t)*iter) + 1;
 
-
    double tvec[5];
    long w;
 
    for (w = 0; w < 5; w++) {
      t = GetTime();
-     for (j = 0; j < iter; j++) {
-        for (r = 0; r < nprimes; r++) {
-           long *AAp = AA[r].elts();
-           long *aap = aa[r].elts();
-           long q = GetFFTPrime(r);
-           mulmod_t qinv = GetFFTPrimeInv(r);
-
-           FFTFwd(AAp, aap, L, r);
-           FFTRev1(AAp, aap, L, r);
-           for (i = 0; i < N; i++) AAp[i] = NormalizedMulMod(AAp[i], aap[i], q, qinv);
-        }
+     for (i = 0; i < iter; i++) {
+        FromZZ_pXModRep(c, modrep, 0, dc);
      }
      t = GetTime() - t;
      tvec[w] = t;
-   }
+   } 
+
 
    t = clean_data(tvec);
 
-   t = floor((t/iter)*1e13);
+   t = floor((t/iter)*1e12);
+
+   // The following is just to test some tuning Wizard logic --
+   // be sure to get rid of this!!
+#if (defined(NTL_CRT_ALTCODE))
+   // t *= 1.12;
+#endif
 
    if (t < 0 || t >= 1e15)
       printf("999999999999999 ");
