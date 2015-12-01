@@ -101,12 +101,14 @@ void GF2X_time()
 }
 
 
-ZZX SSMul(const ZZX& a, const ZZX& b)
+
+ZZX KarMul(const ZZX& a, const ZZX& b)
 {
    ZZX res;
-   SSMul(res, a, b);
+   KarMul(res, a, b);
    return res;
 }
+
 
 
 int main()
@@ -324,7 +326,7 @@ cerr << "Performance Options:\n";
 
 
    for (i = 0; i < 15; i++) {
-      //cerr << n << "/" << k; 
+      // cerr << n << "/" << k; 
       cerr << ".";
       RandomLen(p, k);
       ZZ_p::init(p);  
@@ -339,7 +341,7 @@ cerr << "Performance Options:\n";
       FFTMul(c, a, b);
       //cerr << ZZ_pInfo->FFTInfo->NumPrimes;
 
-      c1 = conv<ZZ_pX>( SSMul( conv<ZZX>(a), conv<ZZX>(b) ) );
+      c1 = conv<ZZ_pX>( KarMul( conv<ZZX>(a), conv<ZZX>(b) ) );
 
       if (c1 != c) {
          cerr << "ZZ_pX mul failed!\n";

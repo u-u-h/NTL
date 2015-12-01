@@ -4864,13 +4864,9 @@ void _ntl_crt_struct_tbl::eval(_ntl_gbigint *x, const long *b, _ntl_tmp_vec *gen
                sum += ((NTL_ULL_TYPE) ap[j]) * ((NTL_ULL_TYPE) (mp_limb_t) tp[j]);
 #endif
 
-            mp_limb_t sum1 = sum >> NTL_BITS_PER_LONG;
-            mp_limb_t sum0 = sum;
-            NTL_ULL_TYPE carry_acc0 = ((NTL_ULL_TYPE) acc0) + ((NTL_ULL_TYPE) sum0);
-            mp_limb_t carry = carry_acc0 >> NTL_BITS_PER_LONG;
-            acc0 = carry_acc0;
-            NTL_ULL_TYPE x = ((NTL_ULL_TYPE) sum1) + ((NTL_ULL_TYPE) carry);
-            acc21 += x;
+            sum += acc0;
+            acc0 = sum;
+            acc21 += (mp_limb_t) (sum >> NTL_BITS_PER_LONG);
          }
 
          if (m > 0) {
@@ -4897,14 +4893,10 @@ void _ntl_crt_struct_tbl::eval(_ntl_gbigint *x, const long *b, _ntl_tmp_vec *gen
             for (m--, ap++, tp++; m > 0; m--, ap++, tp++)
                sum += ((NTL_ULL_TYPE) ap[0]) * ((NTL_ULL_TYPE) (mp_limb_t) tp[0]);
 #endif
+            sum += acc0;
+            acc0 = sum;
+            acc21 += (mp_limb_t) (sum >> NTL_BITS_PER_LONG);
 
-            mp_limb_t sum1 = sum >> NTL_BITS_PER_LONG;
-            mp_limb_t sum0 = sum;
-            NTL_ULL_TYPE carry_acc0 = ((NTL_ULL_TYPE) acc0) + ((NTL_ULL_TYPE) sum0);
-            mp_limb_t carry = carry_acc0 >> NTL_BITS_PER_LONG;
-            acc0 = carry_acc0;
-            NTL_ULL_TYPE x = ((NTL_ULL_TYPE) sum1) + ((NTL_ULL_TYPE) carry);
-            acc21 += x;
          }
 
          NTL_ULL_TYPE xxi = ((NTL_ULL_TYPE) xx[i]) + ((NTL_ULL_TYPE) acc0); 
@@ -5429,13 +5421,10 @@ void _ntl_rem_struct_tbl::eval(long *x, _ntl_gbigint a,
             sum += ((NTL_ULL_TYPE) ap[2]) * ((NTL_ULL_TYPE) tp[2]);
             sum += ((NTL_ULL_TYPE) ap[3]) * ((NTL_ULL_TYPE) tp[3]);
 
-            mp_limb_t sum1 = sum >> NTL_BITS_PER_LONG;
-            mp_limb_t sum0 = sum;
-            NTL_ULL_TYPE carry_acc0 = ((NTL_ULL_TYPE) acc0) + ((NTL_ULL_TYPE) sum0);
-            mp_limb_t carry = carry_acc0 >> NTL_BITS_PER_LONG;
-            acc0 = carry_acc0;
-            NTL_ULL_TYPE x = ((NTL_ULL_TYPE) sum1) + ((NTL_ULL_TYPE) carry);
-            acc21 += x;
+            sum += acc0;
+            acc0 = sum;
+            acc21 += (mp_limb_t) (sum >> NTL_BITS_PER_LONG);
+
          }
 
          if (m > 0) {
@@ -5443,13 +5432,9 @@ void _ntl_rem_struct_tbl::eval(long *x, _ntl_gbigint a,
             for (m--, ap++, tp++; m > 0; m--, ap++, tp++)
                sum += ((NTL_ULL_TYPE) ap[0]) * ((NTL_ULL_TYPE) tp[0]);
 
-            mp_limb_t sum1 = sum >> NTL_BITS_PER_LONG;
-            mp_limb_t sum0 = sum;
-            NTL_ULL_TYPE carry_acc0 = ((NTL_ULL_TYPE) acc0) + ((NTL_ULL_TYPE) sum0);
-            mp_limb_t carry = carry_acc0 >> NTL_BITS_PER_LONG;
-            acc0 = carry_acc0;
-            NTL_ULL_TYPE x = ((NTL_ULL_TYPE) sum1) + ((NTL_ULL_TYPE) carry);
-            acc21 += x;
+            sum += acc0;
+            acc0 = sum;
+            acc21 += (mp_limb_t) (sum >> NTL_BITS_PER_LONG);
          }
 
          mp_limb_t accvec[3];
@@ -5586,14 +5571,9 @@ void _ntl_rem_struct_tbl::eval(long *x, _ntl_gbigint a,
             for (long j = 1; j < Bnd; j++)
                sum += ((NTL_ULL_TYPE) ap[j]) * ((NTL_ULL_TYPE) tp[j]);
 #endif
-
-            mp_limb_t sum1 = sum >> NTL_BITS_PER_LONG;
-            mp_limb_t sum0 = sum;
-            NTL_ULL_TYPE carry_acc0 = ((NTL_ULL_TYPE) acc0) + ((NTL_ULL_TYPE) sum0);
-            mp_limb_t carry = carry_acc0 >> NTL_BITS_PER_LONG;
-            acc0 = carry_acc0;
-            NTL_ULL_TYPE x = ((NTL_ULL_TYPE) sum1) + ((NTL_ULL_TYPE) carry);
-            acc21 += x;
+            sum += acc0;
+            acc0 = sum;
+            acc21 += (mp_limb_t) (sum >> NTL_BITS_PER_LONG);
          }
 
          if (m > 0) {
@@ -5620,14 +5600,9 @@ void _ntl_rem_struct_tbl::eval(long *x, _ntl_gbigint a,
             for (m--, ap++, tp++; m > 0; m--, ap++, tp++)
                sum += ((NTL_ULL_TYPE) ap[0]) * ((NTL_ULL_TYPE) tp[0]);
 #endif
-
-            mp_limb_t sum1 = sum >> NTL_BITS_PER_LONG;
-            mp_limb_t sum0 = sum;
-            NTL_ULL_TYPE carry_acc0 = ((NTL_ULL_TYPE) acc0) + ((NTL_ULL_TYPE) sum0);
-            mp_limb_t carry = carry_acc0 >> NTL_BITS_PER_LONG;
-            acc0 = carry_acc0;
-            NTL_ULL_TYPE x = ((NTL_ULL_TYPE) sum1) + ((NTL_ULL_TYPE) carry);
-            acc21 += x;
+            sum += acc0;
+            acc0 = sum;
+            acc21 += (mp_limb_t) (sum >> NTL_BITS_PER_LONG);
          }
 
          mp_limb_t accvec[3];
