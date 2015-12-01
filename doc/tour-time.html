@@ -20,8 +20,8 @@ A Tour of NTL: Some Performance Data
 <p> <hr> <p>
 
 Here are some timing figures from using NTL.
-They were obtained using NTL 8.1 compiled with <tt>g++</tt> 4.2.1
-and with GMP 5.1 on a 2.8GHz Intel Core 2 Duo running on Max OSX 10.6.8.
+They were obtained using NTL 9.4.0 compiled with <tt>g++</tt> 4.2.1
+and with GMP 6.0 on a 2.8GHz Intel Core 2 Duo running on Max OSX 10.6.8.
 
 <p>
 All times are ins <i>seconds</i>.
@@ -30,75 +30,70 @@ included in the distribution.
 The data was generated using NTL's random number generator,
 but running this on a different machine should (in theory)
 generate the same data.
+NOTE: that the PRG changed in v9.4.0, so there may be
+some inconsistencies.
 
 <p>
 <pre>
 
-multiply 1000-bit ints: 4.47942e-07
-remainder 2000/1000-bit ints: 8.3923e-07
-gcd 1000-bit ints: 1.07981e-05
-multiply degree-1000 poly mod 1000-bit prime: 0.0140632
-remainder degree-2000/1000 poly mod 1000-bit prime: 0.0386337
-preconditioned remainder degree-2000/1000 poly mod 1000-bit prime: 0.0143691
-gcd degree-1000 poly mod 1000-bit prime: 0.338774
-multiply degree-1000 int poly with 1000-bit coeffs: 0.0162582
+multiply 1000-bit ints: 4.278e-07
+remainder 2000/1000-bit ints: 8.46432e-07
+gcd 1000-bit ints: 1.07347e-05
+multiply degree-1000 poly mod 1000-bit prime: 0.0117261
+remainder degree-2000/1000 poly mod 1000-bit prime: 0.0337958
+preconditioned remainder degree-2000/1000 poly mod 1000-bit prime: 0.0120237
+gcd degree-1000 poly mod 1000-bit prime: 0.309783
+multiply degree-1000 int poly with 1000-bit coeffs: 0.0160058
 
 factoring degree-1000 poly mod 1000-bit prime...
-square-free decomposition...0.339693
+square-free decomposition...0.311162
 factoring multiplicity 1, deg = 1000
-computing X^p...22.9192
-computing DDF...generating baby steps...+++++++++++++++++++++16.9463
-generating giant steps...++++++++++++++++++++++17.695
-giant refine...++++split 1 43
-split 2 38
-split 3 64
-*++++split 5 108
-*++++split 11 237
-split 12 510
-*giant refine time: 8.19123
-baby refine...split 3 6
-split 6 6
-split 9 9
-split 22 22
-split 38 38
-split 64 64
-split 108 108
-split 237 237
-split 248 248
-split 262 262
-baby refine time: 0.611474
-DDF time: 43.4528
-computing EDF(3,2)...+0.077447
-...total time = 66.8182
+computing X^p...19.5795
+computing DDF...generating baby steps...+++++++++++++++++++++15.6686
+generating giant steps...++++++++++++++++++++++16.3507
+giant refine...++++split 1 1
+split 2 26
+*++++*++++*++++*++++*++*split 0 973
+giant refine time: 12.8109
+baby refine...split 1 1
+split 26 26
+split 973 973
+baby refine time: 7.5e-05
+DDF time: 44.8383
+...total time = 64.7516
 
-multiply 500-bit GF2Xs: 1.03529e-06
-remainder 1000/500-bit GF2Xs: 6.06942e-06
-gcd 500-bit GF2Xs: 1.19302e-05
+multiply 500-bit GF2Xs: 1.03531e-06
+remainder 1000/500-bit GF2Xs: 6.84503e-06
+gcd 500-bit GF2Xs: 1.20136e-05
 
-factoring degree-500 GF2X: 0.0010868
-gcd 500-bit GF2X: 1.18877e-05
-multiply degree-500 poly mod 500-bit GF2X: 0.024646
-remainder degree-1000/500 poly mod 500-bit GF2X: 0.0884258
-preconditioned remainder degree-1000/500 poly mod 500-bit GF2X: 0.049274
-gcd degree-500 poly mod 500-bit GF2X: 0.555096
+factoring degree-500 GF2X: 0.00109438
+gcd 500-bit GF2X: 1.20038e-05
+multiply degree-500 poly mod 500-bit GF2X: 0.0246705
+remainder degree-1000/500 poly mod 500-bit GF2X: 0.0884906
+preconditioned remainder degree-1000/500 poly mod 500-bit GF2X: 0.0493404
+gcd degree-500 poly mod 500-bit GF2X: 0.556664
 
 factoring degree-500 poly mod 500-bit GF2X...
-square-free decomposition...0.038657
+square-free decomposition...0.038216
 factoring multiplicity 1, deg = 250
-computing X^p...4.93964
-computing DDF...generating baby steps...++++++++++3.51054
-generating giant steps...+++++++++++3.78422
-giant refine...++++*++++split 6 59
-split 7 68
-*split 0 123
-giant refine time: 2.59123
-baby refine...split 59 59
-split 68 68
-split 123 123
-baby refine time: 3.4e-05
-DDF time: 9.88619
+computing X^p...4.93956
+computing DDF...generating baby steps...++++++++++3.51112
+generating giant steps...+++++++++++3.78679
+giant refine...++++split 1 9
+split 2 13
+split 4 44
+*++++split 7 73
+*split 0 111
+giant refine time: 2.35063
+baby refine...split 9 9
+split 13 13
+split 44 44
+split 73 73
+split 111 111
+baby refine time: 0.015577
+DDF time: 9.66428
 
-...total time = 14.879
+...total time = 14.6564
 
 
 </pre>

@@ -840,14 +840,23 @@ int main()
    }
 
    /*
-    * check that ints are bigger than chars.
+    * check that there are 8 bits in a char. This is a POSIX requirement.
     */
 
-   if (bpi <= CHAR_BIT) {
-      fprintf(stderr, "BAD NEWS: int type must be longer than char type.\n");
+   if (CHAR_BIT != 8) {
+      fprintf(stderr, "BAD NEWS: char type must have 8 bits.\n");
       return 1;
    }
 
+
+   /*
+    * check that bpi is a multiple of 8.
+    */
+
+   if (bpi % 8 != 0) {
+      fprintf(stderr, "BAD NEWS: int type must be multiple of 8 bits.\n");
+      return 1;
+   }
 
 
    /*
@@ -855,11 +864,9 @@ int main()
     */
 
    if (bpl % 8 != 0) {
-      fprintf(stderr, "BAD NEWS: word size must be multiple of 8 bits.\n");
+      fprintf(stderr, "BAD NEWS: long type must be multiple of 8 bits.\n");
       return 1;
    }
-
-
 
 
    /*

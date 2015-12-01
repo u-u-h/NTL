@@ -77,6 +77,28 @@
 /********************************************************/
 
 
+
+// Define an unsigned type with at least 32 bits
+// there is no truly portable way to do this, yet...
+
+
+#if (NTL_BITS_PER_INT >= 32)
+
+typedef unsigned int _ntl_uint32; // 32-bit word
+#define NTL_BITS_PER_INT32 NTL_BITS_PER_INT
+
+#else
+
+// NOTE: C++ standard guarntees longs ar at least 32-bits wide,
+// and this is also explicitly checked at builod time
+
+typedef unsigned long _ntl_uint32; // 32-bit word
+#define NTL_BITS_PER_INT32 NTL_BITS_PER_LONG
+
+#endif
+
+
+
 // The usual token pasting stuff...
 
 #define NTL_PASTE_TOKENS2(a,b) a ## b

@@ -655,6 +655,7 @@ ZZ ZZFromBytes(<font color="#008b00"><b>const</b></font>&nbsp;<font color="#008b
 <font color="#0000ed"><i>// NumBytes(0) == 0.</i></font><br>
 <br>
 <br>
+<a name="prg"></a>
 <br>
 <font color="#0000ed"><i>/*</i></font><font color="#0000ed"><i>*************************************************************************\</i></font><br>
 <br>
@@ -674,42 +675,113 @@ ZZ ZZFromBytes(<font color="#008b00"><b>const</b></font>&nbsp;<font color="#008b
 <font color="#0000ed"><i>// seen by a client program.</i></font><br>
 <br>
 <br>
-<font color="#008b00"><b>void</b></font>&nbsp;SetSeed(<font color="#008b00"><b>const</b></font>&nbsp;ZZ&amp; s); <br>
-<font color="#0000ed"><i>// Initializes generator with a &quot;seed&quot; s.</i></font><br>
-<font color="#0000ed"><i>// s is first hashed to generate the initial state, so it is</i></font><br>
-<font color="#0000ed"><i>// not necessary that s itself looks random, just that </i></font><br>
-<font color="#0000ed"><i>// it has a lot of &quot;entropy&quot;.</i></font><br>
-<font color="#0000ed"><i>// If SetSeed is not called before using the routines below,</i></font><br>
-<font color="#0000ed"><i>// a default initial seed is used.</i></font><br>
-<font color="#0000ed"><i>// This default seed is guaranteed to be unique among different</i></font><br>
-<font color="#0000ed"><i>// threads in a given process, and an attempt is made to </i></font><br>
-<font color="#0000ed"><i>// make this seed globally unique among all threads and processes.</i></font><br>
-<font color="#0000ed"><i>// Routine ZZFromBytes (above) may be useful for constructing seeds</i></font><br>
-<font color="#0000ed"><i>// from arbitrary binary data.</i></font><br>
+<font color="#008b00"><b>void</b></font>&nbsp;SetSeed(<font color="#008b00"><b>const</b></font>&nbsp;ZZ&amp; s);<br>
+<font color="#008b00"><b>void</b></font>&nbsp;SetSeed(<font color="#008b00"><b>const</b></font>&nbsp;<font color="#008b00"><b>unsigned</b></font>&nbsp;<font color="#008b00"><b>char</b></font>&nbsp;*data, <font color="#008b00"><b>long</b></font>&nbsp;dlen);<br>
+<font color="#008b00"><b>void</b></font>&nbsp;SetSeed(<font color="#008b00"><b>const</b></font>&nbsp;RandomStream&amp; s);<br>
+<font color="#0000ed"><i>// Initializes generator with a &quot;seed&quot;.</i></font><br>
+<br>
+<font color="#0000ed"><i>// The first version hashes the binary representation of s to obtain a key for</i></font><br>
+<font color="#0000ed"><i>// a low-level RandomStream object (see below).</i></font><br>
+<br>
+<font color="#0000ed"><i>// The second version does the same, hashing the first dlen bytes pointed to by</i></font><br>
+<font color="#0000ed"><i>// data to obtain a key for the RandomStream object.</i></font><br>
+<br>
+<font color="#0000ed"><i>// The third version initializes the PRG state directly with the given</i></font><br>
+<font color="#0000ed"><i>// RandomStream object.</i></font><br>
+<br>
+<font color="#0000ed"><i>// EXCEPTIONS: strong ES</i></font><br>
 <br>
 <br>
 <font color="#008b00"><b>void</b></font>&nbsp;RandomBnd(ZZ&amp; x, <font color="#008b00"><b>const</b></font>&nbsp;ZZ&amp; n);<br>
 ZZ RandomBnd(<font color="#008b00"><b>const</b></font>&nbsp;ZZ&amp; n);<br>
+<font color="#008b00"><b>void</b></font>&nbsp;RandomBnd(<font color="#008b00"><b>long</b></font>&amp; x, <font color="#008b00"><b>long</b></font>&nbsp;n);<br>
 <font color="#008b00"><b>long</b></font>&nbsp;RandomBnd(<font color="#008b00"><b>long</b></font>&nbsp;n);<br>
 <font color="#0000ed"><i>// x = pseudo-random number in the range 0..n-1, or 0 if n &lt;= 0</i></font><br>
+<font color="#0000ed"><i>// EXCEPTIONS: strong ES</i></font><br>
 <br>
 <font color="#008b00"><b>void</b></font>&nbsp;RandomBits(ZZ&amp; x, <font color="#008b00"><b>long</b></font>&nbsp;l);<br>
 ZZ RandomBits_ZZ(<font color="#008b00"><b>long</b></font>&nbsp;l);<br>
+<font color="#008b00"><b>void</b></font>&nbsp;RandomBits(<font color="#008b00"><b>long</b></font>&amp; x, <font color="#008b00"><b>long</b></font>&nbsp;l);<br>
 <font color="#008b00"><b>long</b></font>&nbsp;RandomBits_long(<font color="#008b00"><b>long</b></font>&nbsp;l);<br>
 <font color="#0000ed"><i>// x = pseudo-random number in the range 0..2^l-1.</i></font><br>
+<font color="#0000ed"><i>// EXCEPTIONS: strong ES</i></font><br>
 <br>
 <font color="#008b00"><b>void</b></font>&nbsp;RandomLen(ZZ&amp; x, <font color="#008b00"><b>long</b></font>&nbsp;l);<br>
 ZZ RandomLen_ZZ(<font color="#008b00"><b>long</b></font>&nbsp;l);<br>
+<font color="#008b00"><b>void</b></font>&nbsp;RandomLen(<font color="#008b00"><b>long</b></font>&amp; x, <font color="#008b00"><b>long</b></font>&nbsp;l);<br>
 <font color="#008b00"><b>long</b></font>&nbsp;RandomLen_long(<font color="#008b00"><b>long</b></font>&nbsp;l);<br>
 <font color="#0000ed"><i>// x = psuedo-random number with precisely l bits,</i></font><br>
 <font color="#0000ed"><i>// or 0 of l &lt;= 0.</i></font><br>
+<font color="#0000ed"><i>// EXCEPTIONS: strong ES</i></font><br>
 <br>
 <font color="#008b00"><b>unsigned</b></font>&nbsp;<font color="#008b00"><b>long</b></font>&nbsp;RandomBits_ulong(<font color="#008b00"><b>long</b></font>&nbsp;l);<br>
 <font color="#0000ed"><i>// returns a pseudo-random number in the range 0..2^l-1</i></font><br>
+<font color="#0000ed"><i>// EXCEPTIONS: strong ES</i></font><br>
 <br>
 <font color="#008b00"><b>unsigned</b></font>&nbsp;<font color="#008b00"><b>long</b></font>&nbsp;RandomWord();<br>
 <font color="#0000ed"><i>// returns a word filled with pseudo-random bits.</i></font><br>
 <font color="#0000ed"><i>// Equivalent to RandomBits_ulong(NTL_BITS_PER_LONG).</i></font><br>
+<font color="#0000ed"><i>// EXCEPTIONS: strong ES</i></font><br>
+<br>
+<br>
+<br>
+<font color="#008b00"><b>class</b></font>&nbsp;RandomStream { <br>
+<font color="#0000ed"><i>// The low-level pseudo-random generator (PRG).</i></font><br>
+<font color="#0000ed"><i>// After initializing it with a key, one can effectively read an unbounded</i></font><br>
+<font color="#0000ed"><i>// stream of pseudorandom bytes</i></font><br>
+<br>
+<font color="#b02f60"><b>public</b></font>:<br>
+<br>
+&nbsp;&nbsp; <font color="#008b00"><b>explicit</b></font>&nbsp;RandomStream(<font color="#008b00"><b>const</b></font>&nbsp;<font color="#008b00"><b>unsigned</b></font>&nbsp;<font color="#008b00"><b>char</b></font>&nbsp;*key);<br>
+&nbsp;&nbsp; <font color="#0000ed"><i>// key should point to an array of NTL_PRG_KEYLEN bytes</i></font><br>
+&nbsp;&nbsp; <font color="#0000ed"><i>// EXCEPTIONS: nothrow</i></font><br>
+<br>
+&nbsp;&nbsp; <font color="#008b00"><b>void</b></font>&nbsp;get(<font color="#008b00"><b>unsigned</b></font>&nbsp;<font color="#008b00"><b>char</b></font>&nbsp;*res, <font color="#008b00"><b>long</b></font>&nbsp;n); <br>
+&nbsp;&nbsp; <font color="#0000ed"><i>// read the next n bytes from the stream and store to location pointed to by</i></font><br>
+&nbsp;&nbsp; <font color="#0000ed"><i>// res</i></font><br>
+&nbsp;&nbsp; <font color="#0000ed"><i>// EXCEPTIONS: throws a LogicError exception if n is negative</i></font><br>
+<br>
+&nbsp;&nbsp; RandomStream(<font color="#008b00"><b>const</b></font>&nbsp;RandomStream&amp;); <font color="#0000ed"><i>// default</i></font><br>
+&nbsp;&nbsp; RandomStream&amp; <font color="#b02f60"><b>operator</b></font>=(<font color="#008b00"><b>const</b></font>&nbsp;RandomStream&amp;); <font color="#0000ed"><i>// default</i></font><br>
+&nbsp;&nbsp; <font color="#0000ed"><i>// EXCEPTIONS: nothrow</i></font><br>
+};<br>
+<br>
+<br>
+RandomStream&amp; GetCurrentRandomStream();<br>
+<font color="#0000ed"><i>// get reference to the current PRG state. If SetSeed has not been called, it</i></font><br>
+<font color="#0000ed"><i>// is called with a default value (which should be unique to each</i></font><br>
+<font color="#0000ed"><i>// process/thread).&nbsp;&nbsp;NOTE: this is a reference to a thread-local object, so</i></font><br>
+<font color="#0000ed"><i>// different threads will use different PRG's, and by default, each will be</i></font><br>
+<font color="#0000ed"><i>// initialized with a unique seed.</i></font><br>
+<font color="#0000ed"><i>// NOTE: using this reference, you can copy the current PRG state or assign a</i></font><br>
+<font color="#0000ed"><i>// different value to it; however, see the helper class RandomStreamPush below,</i></font><br>
+<font color="#0000ed"><i>// which may be more convenient.</i></font><br>
+<font color="#0000ed"><i>// EXCEPTIONS: strong ES</i></font><br>
+<br>
+<br>
+<br>
+<font color="#008b00"><b>class</b></font>&nbsp;RandomStreamPush {<br>
+<font color="#0000ed"><i>// RAII for saving/restoring current PRG state</i></font><br>
+<font color="#b02f60"><b>public</b></font>:<br>
+&nbsp;&nbsp; RandomStreamPush();&nbsp;&nbsp; <font color="#0000ed"><i>// save a copy of the current PRG state</i></font><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <font color="#0000ed"><i>// EXCEPTIONS: strong ES</i></font><br>
+<br>
+&nbsp;&nbsp; ~RandomStreamPush();&nbsp;&nbsp;<font color="#0000ed"><i>// restore the saveed copy of the PRG state</i></font><br>
+<br>
+<font color="#b02f60"><b>private</b></font>: <br>
+&nbsp;&nbsp; RandomStreamPush(<font color="#008b00"><b>const</b></font>&nbsp;RandomStreamPush&amp;); <font color="#0000ed"><i>// disable</i></font><br>
+&nbsp;&nbsp; <font color="#008b00"><b>void</b></font>&nbsp;<font color="#b02f60"><b>operator</b></font>=(<font color="#008b00"><b>const</b></font>&nbsp;RandomStreamPush&amp;); <font color="#0000ed"><i>// disable</i></font><br>
+};<br>
+<br>
+<br>
+<font color="#008b00"><b>void</b></font>&nbsp;DeriveKey(<font color="#008b00"><b>unsigned</b></font>&nbsp;<font color="#008b00"><b>char</b></font>&nbsp;*key, <font color="#008b00"><b>long</b></font>&nbsp;klen,&nbsp;&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <font color="#008b00"><b>const</b></font>&nbsp;<font color="#008b00"><b>unsigned</b></font>&nbsp;<font color="#008b00"><b>char</b></font>&nbsp;*data, <font color="#008b00"><b>long</b></font>&nbsp;dlen);<br>
+<font color="#0000ed"><i>// utility routine to derive from the byte string (data, dlen) a byte string</i></font><br>
+<font color="#0000ed"><i>// (key, klen).&nbsp;&nbsp;Heuristically, if (data, dlen) has high entropy, then (key,</i></font><br>
+<font color="#0000ed"><i>// klen) should be pseudorandom.&nbsp;&nbsp;This routine is also used internally to</i></font><br>
+<font color="#0000ed"><i>// derive PRG keys.</i></font><br>
+<font color="#0000ed"><i>// EXCEPTIONS: throws LogicError exception if klen &lt; 0 or hlen &lt; 0</i></font><br>
+<br>
 <br>
 <br>
 <font color="#0000ed"><i>/*</i></font><font color="#0000ed"><i>*************************************************************************\</i></font><br>

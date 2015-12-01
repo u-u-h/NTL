@@ -1523,6 +1523,7 @@ _ntl_gadd(_ntl_gbigint a, _ntl_gbigint b, _ntl_gbigint *cc)
 void
 _ntl_gsadd(_ntl_gbigint a, long b, _ntl_gbigint *cc)
 {
+   // FIXME: this is really inefficient...too much overhead
    GRegister(B);
    _ntl_gintoz(b, &B);
    _ntl_gadd(a, B, cc);
@@ -3840,16 +3841,17 @@ long _ntl_gcrtinrange(_ntl_gbigint g, _ntl_gbigint a)
 
 void _ntl_gfrombytes(_ntl_gbigint *x, const unsigned char *p, long n)
 {
-   long BytesPerLimb;
    long lw, r, i, j;
    mp_limb_t *xp, t;
 
+   while (n > 0 && p[n-1] == 0) n--;
+
    if (n <= 0) {
-      x = 0;
+      _ntl_gzero(x);
       return;
    }
 
-   BytesPerLimb = NTL_ZZ_NBITS/8;
+   const long BytesPerLimb = NTL_ZZ_NBITS/8;
 
 
    lw = n/BytesPerLimb;
@@ -3883,7 +3885,8 @@ void _ntl_gfrombytes(_ntl_gbigint *x, const unsigned char *p, long n)
    t >>= (BytesPerLimb-r)*8;
    xp[lw-1] = t;
 
-   STRIP(lw, xp);
+   // strip not necessary here
+   // STRIP(lw, xp);
    SIZE(*x) = lw; 
 }
 
@@ -3893,14 +3896,13 @@ void _ntl_gfrombytes(_ntl_gbigint *x, const unsigned char *p, long n)
 
 void _ntl_gbytesfromz(unsigned char *p, _ntl_gbigint a, long n)
 {
-   long BytesPerLimb;
    long lbits, lbytes, min_bytes, min_words, r;
    long i, j;
    mp_limb_t *ap, t;
 
    if (n < 0) n = 0;
 
-   BytesPerLimb = NTL_ZZ_NBITS/8;
+   const long BytesPerLimb = NTL_ZZ_NBITS/8;
 
    lbits = _ntl_g2log(a);
    lbytes = (lbits+7)/8;

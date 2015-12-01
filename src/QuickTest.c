@@ -121,6 +121,10 @@ int main()
    cerr << "NTL_ZZ_NBITS = " << NTL_ZZ_NBITS << "\n";
    cerr << "NTL_SP_NBITS = " << NTL_SP_NBITS << "\n";
 
+#ifdef NTL_HAVE_LL_TYPE
+   cerr << "NTL_HAVE_LL_TYPE\n";
+#endif
+
 #ifdef NTL_LONGDOUBLE_SP_MULMOD
    cerr << "NTL_LONGDOUBLE_SP_MULMOD\n";
 #endif
@@ -309,7 +313,7 @@ cerr << "Performance Options:\n";
 
 
    for (i = 0; i < 15; i++) {
-      // cerr << n << "/" << k; 
+      //cerr << n << "/" << k; 
       cerr << ".";
       RandomLen(p, k);
       ZZ_p::init(p);  
@@ -321,6 +325,7 @@ cerr << "Performance Options:\n";
       random(b, n);
 
       FFTMul(c, a, b);
+      //cerr << ZZ_pInfo->FFTInfo->NumPrimes;
 
       c1 = conv<ZZ_pX>( SSMul( conv<ZZX>(a), conv<ZZX>(b) ) );
 
@@ -418,11 +423,11 @@ cerr << "Performance Options:\n";
    mul(j3, j1, j2);
 
    t = GetTime();
-   for (i = 0; i < 100; i++) mul(j3, j1, j2);
+   for (i = 0; i < 200; i++) mul(j3, j1, j2);
    t = GetTime()-t;
 
    cerr << "time to multiply degree 1023 polynomials\n   modulo a 1024-bit number: ";
-   cerr << (t/100) << "s";
+   cerr << (t/200) << "s";
    cerr << "\n";
 
    GF2X_time();

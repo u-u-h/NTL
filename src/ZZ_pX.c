@@ -1339,12 +1339,24 @@ void ToModularRep(vec_long& x, const ZZ_p& a, const ZZ_pFFTInfoT *FFTInfo,
 // NOTE: earlier versions used Kahan summation...
 // we no longer do this, as it is less portable than I thought.
 
+#ifdef NTL_HAVE_LL_TYPE
+
+#define LLSTRATEGY
+// this enables a faster implementation of FromModularRep:
+// profiling revealed that way too much time was being spent
+// in the calls to add(q, q, Q): these are all "constant time",
+// but there are too many of them...this leads to a 10-15% improvement
+// in running time for small to moderate size moduli 
+// (up to a couple thousand bits)
+
+
+#endif
+
 void FromModularRep(ZZ_p& x, const vec_long& a, const ZZ_pFFTInfoT *FFTInfo,
                     ZZ_pTmpSpaceT *TmpSpace)
 {
-   long n = FFTInfo->NumPrimes;
+   long nprimes = FFTInfo->NumPrimes;
    NTL_ZZRegister(q);
-   NTL_ZZRegister(s);
    NTL_ZZRegister(t);
    long i;
    double y;
@@ -1358,7 +1370,7 @@ void FromModularRep(ZZ_p& x, const vec_long& a, const ZZ_pFFTInfoT *FFTInfo,
 
    if (FFTInfo->QuickCRT) {
       y = double(0L);
-      for (i = 0; i < n; i++)
+      for (i = 0; i < nprimes; i++)
          y += ((double) a[i])*FFTInfo->x[i];
 
       conv(q, (y + 0.5)); 
@@ -1369,24 +1381,50 @@ void FromModularRep(ZZ_p& x, const vec_long& a, const ZZ_pFFTInfoT *FFTInfo,
 
       y = double(0L);
 
+#ifdef LLSTRATEGY
+      NTL_ULL_TYPE q_ull = 0;
+      NTL_ZZRegister(q_ull_aux);
+#else
       clear(q);
+#endif
 
-      for (i = 0; i < n; i++) {
+      for (i = 0; i < nprimes; i++) {
          r = MulModPreconWithQuo(Q, a[i], FFTInfo->u[i], GetFFTPrime(i), FFTInfo->uqinv[i]);
          // FIXME: add to documented interface?
 
-         add(q, q, Q);
+#ifdef LLSTRATEGY
+         q_ull += (unsigned long) Q;
+#else
+         add(q, q, Q); // this is too slow!!
+#endif
          y += double(r)*GetFFTPrimeRecip(i);
       }
 
       qq = long(y + 0.5);
+
+#ifdef LLSTRATEGY
+      q_ull += (unsigned long) qq;
+#else
       add(q, q, qq);
+#endif
+
+
+#ifdef LLSTRATEGY
+      if (q_ull >> NTL_BITS_PER_LONG) {
+         conv(q, (unsigned long) (q_ull >> NTL_BITS_PER_LONG));
+         LeftShift(q, q, NTL_BITS_PER_LONG);
+         conv(q_ull_aux, (unsigned long) q_ull);
+         add(q, q, q_ull_aux);
+      }
+      else {
+         conv(q, (unsigned long) q_ull);
+      }
+#endif
    }
 
    FFTInfo->crt_struct.eval(t, &a[0], TmpSpace->crt_tmp_vec);
 
-   mul(s, q, FFTInfo->MinusMModP);
-   add(t, t, s);
+   MulAddTo(t, FFTInfo->MinusMModP, q);
 
    conv(x, t);
 }
@@ -1404,7 +1442,6 @@ void ToFFTRep(FFTRep& y, const ZZ_pX& x, long k, long lo, long hi)
 
    long n, i, j, m, j1;
    vec_long& t = ModularRepBuf;
-   ZZ_p accum;
 
 
    if (k > FFTInfo->MaxRoot) 
@@ -1413,7 +1450,8 @@ void ToFFTRep(FFTRep& y, const ZZ_pX& x, long k, long lo, long hi)
    if (lo < 0)
       LogicError("bad arg to ToFFTRep");
 
-   t.SetLength(FFTInfo->NumPrimes);
+   long nprimes = FFTInfo->NumPrimes;
+   t.SetLength(nprimes);
 
    hi = min(hi, deg(x));
 
@@ -1425,17 +1463,31 @@ void ToFFTRep(FFTRep& y, const ZZ_pX& x, long k, long lo, long hi)
 
    const ZZ_p *xx = x.rep.elts();
 
-   for (j = 0; j < n; j++) {
-      if (j >= m) {
-         for (i = 0; i < FFTInfo->NumPrimes; i++)
-            y.tbl[i][j] = 0;
+   if (n >= m) {
+      for (j = 0; j < m; j++) {
+         ToModularRep(t, xx[j+lo], FFTInfo, TmpSpace);
+         for (i = 0; i < nprimes; i++) {
+            y.tbl[i][j] = t[i];
+         }
       }
-      else {
+
+      if (n > m) {
+         for (i = 0; i < nprimes; i++) {
+            long *yp = &y.tbl[i][0];
+            for (j = m; j < n; j++) {
+               yp[j] = 0;
+            }
+         }
+      }
+   }
+   else {
+      NTL_ZZ_pRegister(accum);
+      for (j = 0; j < n; j++) {
          accum = xx[j+lo];
          for (j1 = j + n; j1 < m; j1 += n)
             add(accum, accum, xx[j1+lo]);
          ToModularRep(t, accum, FFTInfo, TmpSpace);
-         for (i = 0; i < FFTInfo->NumPrimes; i++) {
+         for (i = 0; i < nprimes; i++) {
             y.tbl[i][j] = t[i];
          }
       }
@@ -1445,7 +1497,7 @@ void ToFFTRep(FFTRep& y, const ZZ_pX& x, long k, long lo, long hi)
    // is essentially a matrix transpose, which could lead to bad
    // cache performance.  I don't really know if that is an issue.
 
-   for (i = 0; i < FFTInfo->NumPrimes; i++) {
+   for (i = 0; i < nprimes; i++) {
       long *yp = &y.tbl[i][0];
       FFTFwd(yp, yp, k, i);
    }
@@ -1473,7 +1525,8 @@ void RevToFFTRep(FFTRep& y, const vec_ZZ_p& x,
    if (lo < 0)
       LogicError("bad arg to ToFFTRep");
 
-   t.SetLength(FFTInfo->NumPrimes);
+   long nprimes = FFTInfo->NumPrimes;
+   t.SetLength(nprimes);
 
    hi = min(hi, x.length()-1);
 
@@ -1489,7 +1542,7 @@ void RevToFFTRep(FFTRep& y, const vec_ZZ_p& x,
 
    for (j = 0; j < n; j++) {
       if (j >= m) {
-         for (i = 0; i < FFTInfo->NumPrimes; i++)
+         for (i = 0; i < nprimes; i++)
             y.tbl[i][offset] = 0;
       }
       else {
@@ -1497,7 +1550,7 @@ void RevToFFTRep(FFTRep& y, const vec_ZZ_p& x,
          for (j1 = j + n; j1 < m; j1 += n)
             add(accum, accum, xx[j1+lo]);
          ToModularRep(t, accum, FFTInfo, TmpSpace);
-         for (i = 0; i < FFTInfo->NumPrimes; i++) {
+         for (i = 0; i < nprimes; i++) {
             y.tbl[i][offset] = t[i];
 
          }
@@ -1507,7 +1560,7 @@ void RevToFFTRep(FFTRep& y, const vec_ZZ_p& x,
    }
 
 
-   for (i = 0; i < FFTInfo->NumPrimes; i++) {
+   for (i = 0; i < nprimes; i++) {
       long *yp = &y.tbl[i][0];
       FFTRev1(yp, yp, k, i);
    }
@@ -1528,13 +1581,14 @@ void FromFFTRep(ZZ_pX& x, FFTRep& y, long lo, long hi)
 
    vec_long& t = ModularRepBuf;
 
-   t.SetLength(FFTInfo->NumPrimes);
+   long nprimes = FFTInfo->NumPrimes;
+   t.SetLength(nprimes);
 
    k = y.k;
    n = (1L << k);
 
 
-   for (i = 0; i < FFTInfo->NumPrimes; i++) {
+   for (i = 0; i < nprimes; i++) {
       long *yp = &y.tbl[i][0];
       FFTRev1(yp, yp, k, i);
    }
@@ -1545,7 +1599,7 @@ void FromFFTRep(ZZ_pX& x, FFTRep& y, long lo, long hi)
    x.rep.SetLength(l);
 
    for (j = 0; j < l; j++) {
-      for (i = 0; i < FFTInfo->NumPrimes; i++) 
+      for (i = 0; i < nprimes; i++) 
          t[i] = y.tbl[i][j+lo]; 
 
       FromModularRep(x.rep[j], t, FFTInfo, TmpSpace);
@@ -1573,9 +1627,10 @@ void RevFromFFTRep(vec_ZZ_p& x, FFTRep& y, long lo, long hi)
    k = y.k;
    n = (1L << k);
 
-   t.SetLength(FFTInfo->NumPrimes);
+   long nprimes = FFTInfo->NumPrimes;
+   t.SetLength(nprimes);
 
-   for (i = 0; i < FFTInfo->NumPrimes; i++) {
+   for (i = 0; i < nprimes; i++) {
       long *yp = &y.tbl[i][0];
       FFTFwd(yp, yp, k, i);
    }
@@ -1586,7 +1641,7 @@ void RevFromFFTRep(vec_ZZ_p& x, FFTRep& y, long lo, long hi)
    x.SetLength(l);
 
    for (j = 0; j < l; j++) {
-      for (i = 0; i < FFTInfo->NumPrimes; i++) 
+      for (i = 0; i < nprimes; i++) 
          t[i] = y.tbl[i][j+lo]; 
 
       FromModularRep(x[j], t, FFTInfo, TmpSpace);
@@ -1603,13 +1658,14 @@ void NDFromFFTRep(ZZ_pX& x, const FFTRep& y, long lo, long hi, FFTRep& z)
 
    vec_long& t = ModularRepBuf;
 
-   t.SetLength(FFTInfo->NumPrimes);
+   long nprimes = FFTInfo->NumPrimes;
+   t.SetLength(nprimes);
    k = y.k;
    n = (1L << k);
 
    z.SetSize(k);
 
-   for (i = 0; i < FFTInfo->NumPrimes; i++) {
+   for (i = 0; i < nprimes; i++) {
       long *zp = &z.tbl[i][0];
       const long *yp = &y.tbl[i][0];
 
@@ -1622,7 +1678,7 @@ void NDFromFFTRep(ZZ_pX& x, const FFTRep& y, long lo, long hi, FFTRep& z)
    x.rep.SetLength(l);
 
    for (j = 0; j < l; j++) {
-      for (i = 0; i < FFTInfo->NumPrimes; i++) 
+      for (i = 0; i < nprimes; i++) 
          t[i] = z.tbl[i][j+lo]; 
 
       FromModularRep(x.rep[j], t, FFTInfo, TmpSpace);
@@ -1655,9 +1711,10 @@ void FromFFTRep(ZZ_p* x, FFTRep& y, long lo, long hi)
    k = y.k;
    n = (1L << k);
 
-   t.SetLength(FFTInfo->NumPrimes);
+   long nprimes = FFTInfo->NumPrimes;
+   t.SetLength(nprimes);
 
-   for (i = 0; i < FFTInfo->NumPrimes; i++) {
+   for (i = 0; i < nprimes; i++) {
       long *yp = &y.tbl[i][0];
       FFTRev1(yp, yp, k, i);
    }
@@ -1666,7 +1723,7 @@ void FromFFTRep(ZZ_p* x, FFTRep& y, long lo, long hi)
       if (j >= n)
          clear(x[j-lo]);
       else {
-         for (i = 0; i < FFTInfo->NumPrimes; i++) 
+         for (i = 0; i < nprimes; i++) 
             t[i] = y.tbl[i][j]; 
 
          FromModularRep(x[j-lo], t, FFTInfo, TmpSpace);
@@ -1688,7 +1745,9 @@ void mul(FFTRep& z, const FFTRep& x, const FFTRep& y)
 
    z.SetSize(k);
 
-   for (i = 0; i < FFTInfo->NumPrimes; i++) {
+   long nprimes = FFTInfo->NumPrimes;
+
+   for (i = 0; i < nprimes; i++) {
       long *zp = &z.tbl[i][0];
       const long *xp = &x.tbl[i][0];
       const long *yp = &y.tbl[i][0];
@@ -1714,7 +1773,9 @@ void sub(FFTRep& z, const FFTRep& x, const FFTRep& y)
 
    z.SetSize(k);
 
-   for (i = 0; i < FFTInfo->NumPrimes; i++) {
+   long nprimes = FFTInfo->NumPrimes;
+
+   for (i = 0; i < nprimes; i++) {
       long *zp = &z.tbl[i][0];
       const long *xp = &x.tbl[i][0];
       const long *yp = &y.tbl[i][0];
@@ -1738,7 +1799,10 @@ void add(FFTRep& z, const FFTRep& x, const FFTRep& y)
 
    z.SetSize(k);
 
-   for (i = 0; i < FFTInfo->NumPrimes; i++) {
+
+   long nprimes = FFTInfo->NumPrimes;
+
+   for (i = 0; i < nprimes; i++) {
       long *zp = &z.tbl[i][0];
       const long *xp = &x.tbl[i][0];
       const long *yp = &y.tbl[i][0];
@@ -1767,7 +1831,10 @@ void reduce(FFTRep& x, const FFTRep& a, long k)
 
    x.SetSize(k);
 
-   for (i = 0; i < FFTInfo->NumPrimes; i++) {
+
+   long nprimes = FFTInfo->NumPrimes;
+
+   for (i = 0; i < nprimes; i++) {
       ap = &a.tbl[i][0];   
       xp = &x.tbl[i][0];
       for (j = 0; j < n; j++) 
@@ -1788,7 +1855,10 @@ void AddExpand(FFTRep& x, const FFTRep& a)
 
    if (l < k) LogicError("AddExpand: bad args");
 
-   for (i = 0; i < FFTInfo->NumPrimes; i++) {
+
+   long nprimes = FFTInfo->NumPrimes;
+
+   for (i = 0; i < nprimes; i++) {
       long q = GetFFTPrime(i);
       const long *ap = &a.tbl[i][0];
       long *xp = &x.tbl[i][0];
@@ -1810,6 +1880,8 @@ void ToZZ_pXModRep(ZZ_pXModRep& y, const ZZ_pX& x, long lo, long hi)
    long n, i, j;
    vec_long& t = ModularRepBuf;
 
+
+   long nprimes = FFTInfo->NumPrimes;
    t.SetLength(FFTInfo->NumPrimes);
 
    if (lo < 0)
@@ -1823,17 +1895,19 @@ void ToZZ_pXModRep(ZZ_pXModRep& y, const ZZ_pX& x, long lo, long hi)
 
    for (j = 0; j < n; j++) {
       ToModularRep(t, xx[j+lo], FFTInfo, TmpSpace);
-      for (i = 0; i < FFTInfo->NumPrimes; i++)
+      for (i = 0; i < nprimes; i++) 
          y.tbl[i][j] = t[i];
    }
 }
 
 
+NTL_THREAD_LOCAL static vec_long ModRepBuf;
+
 void ToFFTRep(FFTRep& x, const ZZ_pXModRep& a, long k, long lo, long hi)
 {
    const ZZ_pFFTInfoT *FFTInfo = ZZ_p::GetFFTInfo();
 
-   vec_long s;
+   vec_long& s = ModRepBuf;
    long n, m, i, j;
 
    if (k < 0 || lo < 0)
@@ -1847,22 +1921,32 @@ void ToFFTRep(FFTRep& x, const ZZ_pXModRep& a, long k, long lo, long hi)
    if (m > n)
       LogicError("bad args to ToFFTRep");
 
-   s.SetLength(n);
-   long *sp = s.elts();
 
    x.SetSize(k);
 
-   long NumPrimes = FFTInfo->NumPrimes;
+   long nprimes = FFTInfo->NumPrimes;
 
-   for (i = 0; i < NumPrimes; i++) {
-      long *xp = &x.tbl[i][0];
-      long *ap = (m == 0 ? 0 : &a.tbl[i][0]);
-      for (j = 0; j < m; j++)
-         sp[j] = ap[lo+j];
-      for (j = m; j < n; j++)
-         sp[j] = 0;
-      
-      FFTFwd(xp, sp, k, i);
+   if (m == 0) {
+      for (i = 0; i < nprimes; i++) {
+         long *xp = &x.tbl[i][0];
+         for (j = m; j < n; j++)
+            xp[j] = 0;
+      }
+   }
+   else {
+      s.SetLength(n);
+      long *sp = s.elts();
+
+      for (i = 0; i < nprimes; i++) {
+         long *xp = &x.tbl[i][0];
+         long *ap = &a.tbl[i][0];
+         for (j = 0; j < m; j++)
+            sp[j] = ap[lo+j];
+         for (j = m; j < n; j++)
+            sp[j] = 0;
+         
+         FFTFwd(xp, sp, k, i);
+      }
    }
 }
 

@@ -176,6 +176,11 @@ void ZZ_p::init(const ZZ& p)
 
 void ZZ_pContext::restore() const
 {
+   if (ZZ_pInfo == ptr) return; 
+   // NOTE: this simple optimization could be useful in some situations,
+   //    for example, a worker thread re-setting the current modulus
+   //    in a multi-threaded build
+
    ZZ_pInfo = ptr;
    ZZ_pTmpSpace = 0;
    ZZ_pInstalled = false;

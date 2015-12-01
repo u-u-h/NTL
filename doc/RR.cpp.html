@@ -27,6 +27,9 @@
 <font color="#0000ed"><i>The minimum precision that can be set is 53 bits.</i></font><br>
 <font color="#0000ed"><i>The maximum precision is limited only by the word size of the machine.</i></font><br>
 <br>
+<font color="#0000ed"><i>A convenience class RRPush is provided to automatically save and</i></font><br>
+<font color="#0000ed"><i>restore the current precision.</i></font><br>
+<br>
 <font color="#0000ed"><i>All arithmetic operations are implemented so that the effect is as if the</i></font><br>
 <font color="#0000ed"><i>result was computed exactly, and then rounded to p bits.&nbsp;&nbsp;If a number</i></font><br>
 <font color="#0000ed"><i>lies exactly half-way between two p-bit numbers, the &quot;round to even&quot;</i></font><br>
@@ -355,6 +358,58 @@ ZZ CeilToZZ(<font color="#008b00"><b>const</b></font>&nbsp;ZZ&amp; a);<br>
 <br>
 <font color="#008b00"><b>void</b></font>&nbsp;RoundToZZ(ZZ&amp; z, <font color="#008b00"><b>const</b></font>&nbsp;RR&amp; a);&nbsp;&nbsp; <font color="#0000ed"><i>// z = a, truncated to nearest integer</i></font><br>
 ZZ RoundToZZ(<font color="#008b00"><b>const</b></font>&nbsp;RR&amp; a);&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#0000ed"><i>// ties are rounded to an even integer</i></font><br>
+<br>
+<br>
+<br>
+<a name="push"></a>
+<br>
+<font color="#0000ed"><i>/*</i></font><font color="#0000ed"><i>*************************************************************************\</i></font><br>
+<br>
+<font color="#0000ed"><i>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Saving and restoring the current precision</i></font><br>
+<br>
+<font color="#0000ed"><i>\*************************************************************************</i></font><font color="#0000ed"><i>*/</i></font><br>
+<br>
+<br>
+<font color="#008b00"><b>class</b></font>&nbsp;RRPush {<br>
+<font color="#b02f60"><b>public</b></font>:<br>
+&nbsp;&nbsp; RRPush();&nbsp;&nbsp;<font color="#0000ed"><i>// saves the cuurent precision</i></font><br>
+&nbsp;&nbsp; ~RRPush(); <font color="#0000ed"><i>// restores the saved precision</i></font><br>
+<br>
+<font color="#b02f60"><b>private</b></font>: <br>
+&nbsp;&nbsp; RRPush(<font color="#008b00"><b>const</b></font>&nbsp;RRPush&amp;); <font color="#0000ed"><i>// disable</i></font><br>
+&nbsp;&nbsp; <font color="#008b00"><b>void</b></font>&nbsp;<font color="#b02f60"><b>operator</b></font>=(<font color="#008b00"><b>const</b></font>&nbsp;RRPush&amp;); <font color="#0000ed"><i>// disable</i></font><br>
+};<br>
+<br>
+<br>
+<font color="#0000ed"><i>// Example: </i></font><br>
+<font color="#0000ed"><i>//</i></font><br>
+<font color="#0000ed"><i>// {</i></font><br>
+<font color="#0000ed"><i>//&nbsp;&nbsp;&nbsp;&nbsp;RRPush push;&nbsp;&nbsp;// don't forget to declare a variable!!</i></font><br>
+<font color="#0000ed"><i>//&nbsp;&nbsp;&nbsp;&nbsp;RR::SetPrecsion(new_p);</i></font><br>
+<font color="#0000ed"><i>//&nbsp;&nbsp;&nbsp;&nbsp;...</i></font><br>
+<font color="#0000ed"><i>// } // old precsion restored when scope is exited</i></font><br>
+<br>
+<br>
+<font color="#008b00"><b>class</b></font>&nbsp;RROutputPush {<br>
+<font color="#b02f60"><b>public</b></font>:<br>
+&nbsp;&nbsp; RROutputPush();&nbsp;&nbsp; <font color="#0000ed"><i>// saves the cuurent output precision</i></font><br>
+&nbsp;&nbsp; ~RROutputPush();&nbsp;&nbsp;<font color="#0000ed"><i>// restores the saved output precision</i></font><br>
+<br>
+<font color="#b02f60"><b>private</b></font>: <br>
+&nbsp;&nbsp; RROutputPush(<font color="#008b00"><b>const</b></font>&nbsp;RROutputPush&amp;); <font color="#0000ed"><i>// disable</i></font><br>
+&nbsp;&nbsp; <font color="#008b00"><b>void</b></font>&nbsp;<font color="#b02f60"><b>operator</b></font>=(<font color="#008b00"><b>const</b></font>&nbsp;RROutputPush&amp;); <font color="#0000ed"><i>// disable</i></font><br>
+};<br>
+<br>
+<br>
+<font color="#0000ed"><i>// Example: </i></font><br>
+<font color="#0000ed"><i>//</i></font><br>
+<font color="#0000ed"><i>// {</i></font><br>
+<font color="#0000ed"><i>//&nbsp;&nbsp;&nbsp;&nbsp;RROutputPush push;&nbsp;&nbsp;// don't forget to declare a variable!!</i></font><br>
+<font color="#0000ed"><i>//&nbsp;&nbsp;&nbsp;&nbsp;RR::SetOutputPrecsion(new_op);</i></font><br>
+<font color="#0000ed"><i>//&nbsp;&nbsp;&nbsp;&nbsp;...</i></font><br>
+<font color="#0000ed"><i>// } // old output precsion restored when scope is exited</i></font><br>
+<br>
+<br>
 <br>
 <br>
 <font color="#0000ed"><i>/*</i></font><font color="#0000ed"><i>*************************************************************************\</i></font><br>

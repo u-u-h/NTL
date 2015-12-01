@@ -6158,16 +6158,28 @@ void _ntl_zfrombytes(_ntl_verylong *x, const unsigned char *p, long n)
    long i;
    _ntl_verylong a;
    long bitpos, wordpos, bitoffset, diff;
+   long nbits;
+   unsigned long carry, tmp;
+
+   while (n > 0 && p[n-1] == 0) n--;
 
    if (n <= 0) {
       _ntl_zzero(x);
       return;
    }
 
+
    if (n > (NTL_MAX_LONG-(NTL_NBITS-1))/8)
       ResourceError("ZZFromBytes: excessive length");
 
-   sz = (n*8 + NTL_NBITS-1)/NTL_NBITS;
+   nbits = 0;
+   tmp = p[n-1];
+   while (tmp) {
+      tmp >>= 1;
+      nbits++;
+   }
+
+   sz = ((n-1)*8 + nbits + NTL_NBITS-1)/NTL_NBITS;
 
    _ntl_zsetlength(x, sz);
 
@@ -6176,23 +6188,20 @@ void _ntl_zfrombytes(_ntl_verylong *x, const unsigned char *p, long n)
    for (i = 1; i <= sz; i++)
       a[i] = 0;
 
+   carry = 0;
    for (i = 0; i < n; i++) {
       bitpos = i*8;
       wordpos = bitpos/NTL_NBITS;
       bitoffset = bitpos - wordpos*NTL_NBITS;
       diff = NTL_NBITS-bitoffset;
 
-      if (diff < 8) {
-         a[wordpos+1] |= 
+      a[wordpos+1] |= carry |
             ((( ((unsigned long)(p[i])) & 255UL ) << bitoffset) & NTL_RADIXM);
-         a[wordpos+2] = ( ((long)(p[i])) & 255 ) >> diff;
-      }
-      else {
-         a[wordpos+1] |= (( ((long)(p[i])) & 255 ) << bitoffset);
-      }
+
+      carry = ( ((unsigned long)(p[i])) & 255UL ) >> diff;
    }
 
-   while (sz > 1 && a[sz] == 0) sz--;
+   a[sz] |= carry;
    a[0] = sz;
 }
 

@@ -1466,6 +1466,161 @@ void FromModularRep(zz_p& res, long *a, zz_pInfoT* info)
 }
 
 
+#if 0
+// converts entries lo..lo+cnt-1 in R and stores results into res
+static 
+void FromModularRep(zz_p* res, const fftRep& R, long lo, long cnt, 
+                    zz_pInfoT* info)
+{
+   if (cnt <= 0) return;
+
+   long nprimes = info->NumPrimes;
+   long p = info->p;
+   mulmod_t pinv = info->pinv;
+   long *CoeffModP = info->CoeffModP.elts();
+   double *x = info->x.elts();
+   long *u = info->u.elts();
+   mulmod_precon_t *uqinv = info->uqinv.elts();
+   long MinusMModP = info->MinusMModP;
+   mulmod_precon_t MinusMModPpinv = info->MinusMModPpinv;
+   mulmod_precon_t *CoeffModPpinv = info->CoeffModPpinv.elts();
+
+   long primes[4];
+   double prime_recip[4];
+   long *tbl[4];
+
+   long q, s, t;
+   long i, j;
+   double y;
+
+   for (i = 0; i < nprimes; i++) {
+      primes[i] = GetFFTPrime(i);
+      prime_recip[i] = GetFFTPrimeRecip(i);
+      tbl[i] = R.tbl[i].get();
+   }
+
+   for (j = 0; j < cnt; j++) {
+      y = double(0L);
+      t = 0;
+
+      for (i = 0; i < nprimes; i++) {
+         s = MulModPrecon(tbl[i][j+lo], u[i], primes[i], uqinv[i]);
+         y = y + double(s)*prime_recip[i];
+
+
+         // DIRT: uses undocumented MulMod feature (see sp_arith.h)
+         // input s is not reduced mod p
+         s = MulModPrecon(s, CoeffModP[i], p, CoeffModPpinv[i]);
+
+         t = AddMod(t, s, p);
+      }
+
+      q = (long) (y + 0.5);
+
+      // DIRT: uses undocumented MulMod feature (see sp_arith.h)
+      // input q may not be reduced mod p
+      s = MulModPrecon(q, MinusMModP, p, MinusMModPpinv);
+
+      t = AddMod(t, s, p);
+      res[j].LoopHole() = t;
+   }
+
+}
+#else
+
+#define NTL_FMR_LOOP_BODY(i) \
+         s = MulModPrecon(tbl[i][j+lo], u[i], primes[i], uqinv[i]);\
+         y = y + double(s)*prime_recip[i];\
+\
+\
+         /* DIRT: uses undocumented MulMod feature (see sp_arith.h) */\
+         /* input s is not reduced mod p */\
+         s = MulModPrecon(s, CoeffModP[i], p, CoeffModPpinv[i]);\
+\
+         t = AddMod(t, s, p);\
+
+
+#define NTL_FMP_OUTER_LOOP(XXX) \
+   for (j = 0; j < cnt; j++) {\
+      y = double(0L);\
+      t = 0;\
+      XXX \
+      q = (long) (y + 0.5);\
+      /* DIRT: uses undocumented MulMod feature (see sp_arith.h) */\
+      /* input q may not be reduced mod p */\
+      s = MulModPrecon(q, MinusMModP, p, MinusMModPpinv);\
+      t = AddMod(t, s, p);\
+      res[j].LoopHole() = t;\
+   }\
+
+
+
+// converts entries lo..lo+cnt-1 in R and stores results into res
+static 
+void FromModularRep(zz_p* res, const fftRep& R, long lo, long cnt, 
+                    zz_pInfoT* info)
+{
+   if (cnt <= 0) return;
+
+   long nprimes = info->NumPrimes;
+   long p = info->p;
+   mulmod_t pinv = info->pinv;
+   long *CoeffModP = info->CoeffModP.elts();
+   double *x = info->x.elts();
+   long *u = info->u.elts();
+   mulmod_precon_t *uqinv = info->uqinv.elts();
+   long MinusMModP = info->MinusMModP;
+   mulmod_precon_t MinusMModPpinv = info->MinusMModPpinv;
+   mulmod_precon_t *CoeffModPpinv = info->CoeffModPpinv.elts();
+
+   long primes[4];
+   double prime_recip[4];
+   long *tbl[4];
+
+   long q, s, t;
+   long i, j;
+   double y;
+
+   for (i = 0; i < nprimes; i++) {
+      primes[i] = GetFFTPrime(i);
+      prime_recip[i] = GetFFTPrimeRecip(i);
+      tbl[i] = R.tbl[i].get();
+   }
+
+   if (nprimes == 1) {
+      long *tbl_0 = tbl[0];
+      mulmod_precon_t CoeffModPpinv_0 = CoeffModPpinv[0];
+      long primes_0 = primes[0];
+      long hp0 = primes_0 >> 1;
+      
+      for (j = 0; j < cnt; j++) {
+         s = tbl_0[j+lo];
+
+         // DIRT: uses undocumented MulMod feature (see sp_arith.h)
+         // input s is not reduced mod p
+         t = MulModPrecon(s, 1, p, CoeffModPpinv_0);
+
+         res[j].LoopHole() = AddMod(t, sp_SignMask(hp0-s) & MinusMModP, p);
+      }
+   }
+   else if (nprimes == 2) {
+      NTL_FMP_OUTER_LOOP( NTL_FMR_LOOP_BODY(0) NTL_FMR_LOOP_BODY(1) )
+   }
+   else if (nprimes == 3) {
+      NTL_FMP_OUTER_LOOP( NTL_FMR_LOOP_BODY(0) NTL_FMR_LOOP_BODY(1) NTL_FMR_LOOP_BODY(2) )
+   }
+   else { // nprimes == 4
+      NTL_FMP_OUTER_LOOP( NTL_FMR_LOOP_BODY(0) NTL_FMR_LOOP_BODY(1) NTL_FMR_LOOP_BODY(2)  NTL_FMR_LOOP_BODY(3) )
+   }
+}
+
+
+
+
+#endif
+
+
+
 
 void TofftRep(fftRep& y, const zz_pX& x, long k, long lo, long hi)
 // computes an n = 2^k point convolution.
@@ -1476,7 +1631,7 @@ void TofftRep(fftRep& y, const zz_pX& x, long k, long lo, long hi)
 
    long n, i, j, m, j1;
    long accum;
-   long NumPrimes = info->NumPrimes;
+   long nprimes = info->NumPrimes;
 
 
    if (k > info->MaxRoot) 
@@ -1498,11 +1653,17 @@ void TofftRep(fftRep& y, const zz_pX& x, long k, long lo, long hi)
    FFTPrimeInfo *p_info = info->p_info;
 
    if (p_info) {
-      for (j = 0; j < n; j++) {
-         if (j >= m) {
-            y.tbl[0][j] = 0;
+      if (n >= m) {
+         long *yp = &y.tbl[0][0];
+         for (j = 0; j < m; j++) {
+            yp[j] = rep(xx[j+lo]);
          }
-         else {
+         for (j = m; j < n; j++) {
+            yp[j] = 0;
+         }
+      }
+      else {
+         for (j = 0; j < n; j++) {
             accum = rep(xx[j+lo]);
             for (j1 = j + n; j1 < m; j1 += n)
                accum = AddMod(accum, rep(xx[j1+lo]), p);
@@ -1511,19 +1672,29 @@ void TofftRep(fftRep& y, const zz_pX& x, long k, long lo, long hi)
       }
    }
    else {
-      for (j = 0; j < n; j++) {
-         if (j >= m) {
-            for (i = 0; i < NumPrimes; i++)
-               y.tbl[i][j] = 0;
+      if (n >= m) {
+         for (i = 0; i < nprimes; i++) {
+            long q = GetFFTPrime(i);
+            long *yp = &y.tbl[i][0];
+            for (j = 0; j < m; j++) {
+               long t = rep(xx[j+lo]);
+               t = sp_CorrectExcess(t, q);
+               yp[j] = t;
+            }
+            for (j = m; j < n; j++) {
+               yp[j] = 0;
+            }
          }
-         else {
+      }
+      else {
+         for (j = 0; j < n; j++) {
             accum = rep(xx[j+lo]);
             for (j1 = j + n; j1 < m; j1 += n)
                accum = AddMod(accum, rep(xx[j1+lo]), p);
-            for (i = 0; i < NumPrimes; i++) {
+            for (i = 0; i < nprimes; i++) {
                long q = GetFFTPrime(i);
                long t = accum;
-               if (t >= q) t -= q;
+               t = sp_CorrectExcess(t, q);
                y.tbl[i][j] = t;
             }
          }
@@ -1536,7 +1707,7 @@ void TofftRep(fftRep& y, const zz_pX& x, long k, long lo, long hi)
       FFTFwd(yp, yp, k, *p_info);
    } 
    else {
-      for (i = 0; i < info->NumPrimes; i++) {
+      for (i = 0; i < nprimes; i++) {
          long *yp = &y.tbl[i][0];
          FFTFwd(yp, yp, k, i);
       }
@@ -1605,7 +1776,7 @@ void RevTofftRep(fftRep& y, const vec_zz_p& x,
             for (i = 0; i < NumPrimes; i++) {
                long q = GetFFTPrime(i);
                long t = accum;
-               if (t >= q) t -= q;
+               t = sp_CorrectExcess(t, q);
                y.tbl[i][offset] = t;
             }
          }
@@ -1638,7 +1809,6 @@ void FromfftRep(zz_pX& x, fftRep& y, long lo, long hi)
    long k, n, i, j, l;
    long NumPrimes = info->NumPrimes;
 
-   long t[4];
 
    k = y.k;
    n = (1L << k);
@@ -1668,12 +1838,7 @@ void FromfftRep(zz_pX& x, fftRep& y, long lo, long hi)
          xp[j].LoopHole() = yp[j+lo];
    }
    else {
-      for (j = 0; j < l; j++) {
-         for (i = 0; i < NumPrimes; i++) 
-            t[i] = y.tbl[i][j+lo]; 
-   
-         FromModularRep(x.rep[j], t, info);
-      }
+      FromModularRep(x.rep.elts(), y, lo, l, info);
    }
 
    x.normalize();
@@ -1692,7 +1857,6 @@ void RevFromfftRep(vec_zz_p& x, fftRep& y, long lo, long hi)
    long k, n, i, j, l;
    long NumPrimes = info->NumPrimes;
 
-   long t[4];
 
    k = y.k;
    n = (1L << k);
@@ -1722,12 +1886,7 @@ void RevFromfftRep(vec_zz_p& x, fftRep& y, long lo, long hi)
          xp[j].LoopHole() = yp[j+lo];
    }
    else {
-      for (j = 0; j < l; j++) {
-         for (i = 0; i < NumPrimes; i++) 
-            t[i] = y.tbl[i][j+lo]; 
-   
-         FromModularRep(x[j], t, info);
-      }
+      FromModularRep(x.elts(), y, lo, l, info);
    }
 }
 
@@ -1738,7 +1897,6 @@ void NDFromfftRep(zz_pX& x, const fftRep& y, long lo, long hi, fftRep& z)
    long k, n, i, j, l;
    long NumPrimes = info->NumPrimes;
 
-   long t[4];
 
    k = y.k;
    n = (1L << k);
@@ -1772,12 +1930,7 @@ void NDFromfftRep(zz_pX& x, const fftRep& y, long lo, long hi, fftRep& z)
          xp[j].LoopHole() = zp[j+lo];
    }
    else {
-      for (j = 0; j < l; j++) {
-         for (i = 0; i < NumPrimes; i++) 
-            t[i] = z.tbl[i][j+lo]; 
-   
-         FromModularRep(x.rep[j], t, info);
-      }
+      FromModularRep(x.rep.elts(), z, lo, l, info);
    }
 
    x.normalize();
@@ -1801,7 +1954,6 @@ void FromfftRep(zz_p* x, fftRep& y, long lo, long hi)
    long k, n, i, j;
    long NumPrimes = info->NumPrimes;
 
-   long t[4];
 
    k = y.k;
    n = (1L << k);
@@ -1825,17 +1977,14 @@ void FromfftRep(zz_p* x, fftRep& y, long lo, long hi)
          long *yp = &y.tbl[i][0];
          FFTRev1(yp, yp, k, i);
       }
+
+      // take coefficients lo..min(hi, n-1) from y
+      // zero out coefficients max(n, lo)..hi
    
-      for (j = lo; j <= hi; j++) {
-         if (j >= n)
-            clear(x[j-lo]);
-         else {
-            for (i = 0; i < info->NumPrimes; i++) 
-               t[i] = y.tbl[i][j]; 
-   
-            FromModularRep(x[j-lo], t, info);
-         }
-      }
+      long l = min(hi, n-1) - lo + 1;
+      l = max(l, 0);
+      FromModularRep(x, y, lo, l, info); 
+      for (j = max(n, lo); j <= hi; j++) clear(x[j-lo]);
    }
 }
 

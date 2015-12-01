@@ -930,8 +930,87 @@ inline long ZZ_RoundCorrection(const ZZ& a, long k, long residual)
 ************************************************************/
 
 
+// ================ NEW PRG STUFF =================
+
+
+// Low-level key-derivation 
+
+
+void DeriveKey(unsigned char *key, long klen,  
+               const unsigned char *data, long dlen);
+
+
+
+// Low-level chacha stuff
+
+#define NTL_PRG_KEYLEN (32)
+
+class RandomStream {
+private:
+   _ntl_uint32 state[16];
+   unsigned char buf[64];
+   long pos;
+
+   void do_get(unsigned char *res, long n); 
+
+public:
+   explicit
+   RandomStream(const unsigned char *key);
+
+   // No default constructor 
+   // default copy and assignment
+
+   void get(unsigned char *res, long n) 
+   {
+      // optimize short reads
+      if (n >= 0 && n <= 64-pos) {
+         long i;
+         for (i = 0; i < n; i++) {
+            res[i] = buf[pos+i];
+         }
+         pos += n;
+      }
+      else {
+         do_get(res, n);
+      }
+   }
+
+};
+
+   
+
+
+RandomStream& GetCurrentRandomStream();
+// get reference to the current random by stream --
+// if SetSeed has not been called, it is called with
+// a default value (which should be unique to each
+// process/thread
+
+
 void SetSeed(const ZZ& s);
+void SetSeed(const unsigned char *data, long dlen);
+void SetSeed(const RandomStream& s);
 // initialize random number generator
+// in the first two version, a PRG key is derived from
+// the data using DeriveKey.
+
+
+// RAII for saving/restoring current state of PRG
+
+class RandomStreamPush {
+private: 
+   RandomStream saved;
+
+   RandomStreamPush(const RandomStreamPush&); // disable
+   void operator=(const RandomStreamPush&); // disable
+
+public:
+   RandomStreamPush() : saved(GetCurrentRandomStream()) { }
+   ~RandomStreamPush() { SetSeed(saved); } 
+
+};
+
+
 
 
 void RandomBnd(ZZ& x, const ZZ& n);
@@ -959,10 +1038,16 @@ inline ZZ RandomBits_ZZ(long NumBits)
 // single-precision version of the above
 
 long RandomBnd(long n);
+inline void RandomBnd(long& x, long n) { x = RandomBnd(n); }
 
 long RandomLen_long(long l);
+inline void RandomLen(long& x, long l) { x = RandomLen_long(l); }
 
 long RandomBits_long(long l);
+inline void RandomBits(long& x, long l) { x = RandomBits_long(l); }
+
+
+// specialty routines
 
 unsigned long RandomWord();
 unsigned long RandomBits_ulong(long l);

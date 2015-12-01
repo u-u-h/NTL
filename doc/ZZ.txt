@@ -647,6 +647,7 @@ long NumBytes(long a);
 // NumBytes(0) == 0.
 
 
+// @anchor{prg}
 
 /**************************************************************************\
 
@@ -666,42 +667,113 @@ long NumBytes(long a);
 // seen by a client program.
 
 
-void SetSeed(const ZZ& s); 
-// Initializes generator with a "seed" s.
-// s is first hashed to generate the initial state, so it is
-// not necessary that s itself looks random, just that 
-// it has a lot of "entropy".
-// If SetSeed is not called before using the routines below,
-// a default initial seed is used.
-// This default seed is guaranteed to be unique among different
-// threads in a given process, and an attempt is made to 
-// make this seed globally unique among all threads and processes.
-// Routine ZZFromBytes (above) may be useful for constructing seeds
-// from arbitrary binary data.
+void SetSeed(const ZZ& s);
+void SetSeed(const unsigned char *data, long dlen);
+void SetSeed(const RandomStream& s);
+// Initializes generator with a "seed".
+
+// The first version hashes the binary representation of s to obtain a key for
+// a low-level RandomStream object (see below).
+
+// The second version does the same, hashing the first dlen bytes pointed to by
+// data to obtain a key for the RandomStream object.
+
+// The third version initializes the PRG state directly with the given
+// RandomStream object.
+
+// EXCEPTIONS: strong ES
 
 
 void RandomBnd(ZZ& x, const ZZ& n);
 ZZ RandomBnd(const ZZ& n);
+void RandomBnd(long& x, long n);
 long RandomBnd(long n);
 // x = pseudo-random number in the range 0..n-1, or 0 if n <= 0
+// EXCEPTIONS: strong ES
 
 void RandomBits(ZZ& x, long l);
 ZZ RandomBits_ZZ(long l);
+void RandomBits(long& x, long l);
 long RandomBits_long(long l);
 // x = pseudo-random number in the range 0..2^l-1.
+// EXCEPTIONS: strong ES
 
 void RandomLen(ZZ& x, long l);
 ZZ RandomLen_ZZ(long l);
+void RandomLen(long& x, long l);
 long RandomLen_long(long l);
 // x = psuedo-random number with precisely l bits,
 // or 0 of l <= 0.
+// EXCEPTIONS: strong ES
 
 unsigned long RandomBits_ulong(long l);
 // returns a pseudo-random number in the range 0..2^l-1
+// EXCEPTIONS: strong ES
 
 unsigned long RandomWord();
 // returns a word filled with pseudo-random bits.
 // Equivalent to RandomBits_ulong(NTL_BITS_PER_LONG).
+// EXCEPTIONS: strong ES
+
+
+
+class RandomStream { 
+// The low-level pseudo-random generator (PRG).
+// After initializing it with a key, one can effectively read an unbounded
+// stream of pseudorandom bytes
+
+public:
+
+   explicit RandomStream(const unsigned char *key);
+   // key should point to an array of NTL_PRG_KEYLEN bytes
+   // EXCEPTIONS: nothrow
+
+   void get(unsigned char *res, long n); 
+   // read the next n bytes from the stream and store to location pointed to by
+   // res
+   // EXCEPTIONS: throws a LogicError exception if n is negative
+
+   RandomStream(const RandomStream&); // default
+   RandomStream& operator=(const RandomStream&); // default
+   // EXCEPTIONS: nothrow
+};
+
+
+RandomStream& GetCurrentRandomStream();
+// get reference to the current PRG state. If SetSeed has not been called, it
+// is called with a default value (which should be unique to each
+// process/thread).  NOTE: this is a reference to a thread-local object, so
+// different threads will use different PRG's, and by default, each will be
+// initialized with a unique seed.
+// NOTE: using this reference, you can copy the current PRG state or assign a
+// different value to it; however, see the helper class RandomStreamPush below,
+// which may be more convenient.
+// EXCEPTIONS: strong ES
+
+
+
+class RandomStreamPush {
+// RAII for saving/restoring current PRG state
+public:
+   RandomStreamPush();   // save a copy of the current PRG state
+                     // EXCEPTIONS: strong ES
+
+   ~RandomStreamPush();  // restore the saveed copy of the PRG state
+
+private: 
+   RandomStreamPush(const RandomStreamPush&); // disable
+   void operator=(const RandomStreamPush&); // disable
+};
+
+
+void DeriveKey(unsigned char *key, long klen,  
+               const unsigned char *data, long dlen);
+// utility routine to derive from the byte string (data, dlen) a byte string
+// (key, klen).  Heuristically, if (data, dlen) has high entropy, then (key,
+// klen) should be pseudorandom.  This routine is also used internally to
+// derive PRG keys.
+// EXCEPTIONS: throws LogicError exception if klen < 0 or hlen < 0
+
 
 
 /**************************************************************************\

@@ -19,6 +19,9 @@ using RR::SetPrecision(), and can be read using RR::precision().
 The minimum precision that can be set is 53 bits.
 The maximum precision is limited only by the word size of the machine.
 
+A convenience class RRPush is provided to automatically save and
+restore the current precision.
+
 All arithmetic operations are implemented so that the effect is as if the
 result was computed exactly, and then rounded to p bits.  If a number
 lies exactly half-way between two p-bit numbers, the "round to even"
@@ -347,6 +350,58 @@ ZZ CeilToZZ(const ZZ& a);
 
 void RoundToZZ(ZZ& z, const RR& a);   // z = a, truncated to nearest integer
 ZZ RoundToZZ(const RR& a);            // ties are rounded to an even integer
+
+
+
+// @anchor{push}
+
+/**************************************************************************\
+
+                 Saving and restoring the current precision
+
+\**************************************************************************/
+
+
+class RRPush {
+public:
+   RRPush();  // saves the cuurent precision
+   ~RRPush(); // restores the saved precision
+
+private: 
+   RRPush(const RRPush&); // disable
+   void operator=(const RRPush&); // disable
+};
+
+
+// Example: 
+//
+// {
+//    RRPush push;  // don't forget to declare a variable!!
+//    RR::SetPrecsion(new_p);
+//    ...
+// } // old precsion restored when scope is exited
+
+
+class RROutputPush {
+public:
+   RROutputPush();   // saves the cuurent output precision
+   ~RROutputPush();  // restores the saved output precision
+
+private: 
+   RROutputPush(const RROutputPush&); // disable
+   void operator=(const RROutputPush&); // disable
+};
+
+
+// Example: 
+//
+// {
+//    RROutputPush push;  // don't forget to declare a variable!!
+//    RR::SetOutputPrecsion(new_op);
+//    ...
+// } // old output precsion restored when scope is exited
+
+
 
 
 /**************************************************************************\

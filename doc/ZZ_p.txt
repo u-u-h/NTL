@@ -267,7 +267,7 @@ You could also do the following:
 
       ZZ_p::init(p2); // install p2
 
-      // reinstall original modulus as close of scope
+      // reinstall original modulus at close of scope
    }
 
       
