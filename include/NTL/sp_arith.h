@@ -896,7 +896,7 @@ static inline muldivrem_t PrepMulDivRem(long b, long n)
 
 static inline long MulMod2(long a, long b, long n, wide_double bninv)
 {
-   return MulMod2_legacy(a, b, n, ninv);
+   return MulMod2_legacy(a, b, n, bninv);
 }
 
 

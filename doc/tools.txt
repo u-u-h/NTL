@@ -104,10 +104,22 @@ void swap(int& a, int& b);
 void TerminalError(const char *s);
 // print an error message and call abort
 
+extern void (*ErrorMsgCallback)(const char *);
 extern void (*ErrorCallback)();
-// A pointer (initially NULL) to a callback function.
-// This function will be called by the TerminalError function.
-// as well as other functions, before calling abort().
+// Pointers (initially NULL) to callback functions.
+// Upon encountering an unrecoverable error with an error
+// message s, the following happens:
+//
+//    if (ErrorMsgCallback)
+//       (*ErrorMsgCallback)(s);
+//    else
+//       cerr << s << "\n";
+// 
+//    if (ErrorCallback) (*ErrorCallback)();
+//    abort();
+//
+// NOTE: if threads are enabled, these are actually thread_local variables.
+
 
 
 // The following classes are defined even if exceptions are not

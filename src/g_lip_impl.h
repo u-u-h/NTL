@@ -4598,7 +4598,7 @@ _ntl_rem_struct *_ntl_rem_struct_build(long n, _ntl_gbigint modulus, long (*p)(l
 
       inv_primes.SetLength(n);
       for (i = 0; i < n; i++) 
-         inv_primes[i] = (unsigned long) ( (((NTL_ULL_TYPE) 1) << (NTL_SP_NBITS+NTL_BITS_PER_LONG)) / ((NTL_ULL_TYPE) q[i]) );
+         inv_primes[i] = (unsigned long) ( ((((NTL_ULL_TYPE) 1) << (NTL_SP_NBITS+NTL_BITS_PER_LONG))-1UL) / ((NTL_ULL_TYPE) q[i]) );
 
 
       tbl.SetDims(n, sz);

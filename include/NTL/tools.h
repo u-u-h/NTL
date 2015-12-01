@@ -488,6 +488,9 @@ public:
 
 NTL_THREAD_LOCAL extern void (*ErrorCallback)();
 
+NTL_THREAD_LOCAL extern void (*ErrorMsgCallback)(const char *);
+
+
 void TerminalError(const char *s);
 
 #ifdef NTL_EXCEPTIONS

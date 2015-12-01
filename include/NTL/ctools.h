@@ -309,17 +309,6 @@ void _ntl_ForceToMem(double *p);
 
 double _ntl_ldexp(double x, long e);
 
-void _ntl_abort();
-/* This is the routine called by NTL to abort a program in case of error. */
-
-void _ntl_abort_cxx_callback();
-/* This is a C++ function (implemented in tools.c) that is
-   used to implement the callback mechanism.  The issue here
-   is that I don't want a C function to call a C++ function
-   via a function pointer.  This could potentially be problematic. 
-   EDIT: since changing over to all-C++, this is now moot.
-*/
-
 
 #define NTL_DEFINE_SWAP(T)\
 inline void _ntl_swap(T& a, T& b)\

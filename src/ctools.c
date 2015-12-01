@@ -89,11 +89,6 @@ double _ntl_ldexp(double x, long e)
 }
 
 
-void _ntl_abort()
-{
-   _ntl_abort_cxx_callback();
-   abort();
-}
 
 
 

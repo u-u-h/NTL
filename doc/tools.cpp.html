@@ -112,10 +112,22 @@
 <font color="#008b00"><b>void</b></font>&nbsp;TerminalError(<font color="#008b00"><b>const</b></font>&nbsp;<font color="#008b00"><b>char</b></font>&nbsp;*s);<br>
 <font color="#0000ed"><i>// print an error message and call abort</i></font><br>
 <br>
+<font color="#008b00"><b>extern</b></font>&nbsp;<font color="#008b00"><b>void</b></font>&nbsp;(*ErrorMsgCallback)(<font color="#008b00"><b>const</b></font>&nbsp;<font color="#008b00"><b>char</b></font>&nbsp;*);<br>
 <font color="#008b00"><b>extern</b></font>&nbsp;<font color="#008b00"><b>void</b></font>&nbsp;(*ErrorCallback)();<br>
-<font color="#0000ed"><i>// A pointer (initially NULL) to a callback function.</i></font><br>
-<font color="#0000ed"><i>// This function will be called by the TerminalError function.</i></font><br>
-<font color="#0000ed"><i>// as well as other functions, before calling abort().</i></font><br>
+<font color="#0000ed"><i>// Pointers (initially NULL) to callback functions.</i></font><br>
+<font color="#0000ed"><i>// Upon encountering an unrecoverable error with an error</i></font><br>
+<font color="#0000ed"><i>// message s, the following happens:</i></font><br>
+<font color="#0000ed"><i>//</i></font><br>
+<font color="#0000ed"><i>//&nbsp;&nbsp;&nbsp;&nbsp;if (ErrorMsgCallback)</i></font><br>
+<font color="#0000ed"><i>//&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (*ErrorMsgCallback)(s);</i></font><br>
+<font color="#0000ed"><i>//&nbsp;&nbsp;&nbsp;&nbsp;else</i></font><br>
+<font color="#0000ed"><i>//&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; cerr &lt;&lt; s &lt;&lt; &quot;\n&quot;;</i></font><br>
+<font color="#0000ed"><i>// </i></font><br>
+<font color="#0000ed"><i>//&nbsp;&nbsp;&nbsp;&nbsp;if (ErrorCallback) (*ErrorCallback)();</i></font><br>
+<font color="#0000ed"><i>//&nbsp;&nbsp;&nbsp;&nbsp;abort();</i></font><br>
+<font color="#0000ed"><i>//</i></font><br>
+<font color="#0000ed"><i>// NOTE: if threads are enabled, these are actually thread_local variables.</i></font><br>
+<br>
 <br>
 <br>
 <font color="#0000ed"><i>// The following classes are defined even if exceptions are not</i></font><br>
