@@ -1,0 +1,26 @@
+
+echo "*** Checking for feature: $1"
+
+echo "" > "../include/NTL/HAVE_$1.h"
+
+sh RemoveProg CheckFeature
+echo $3 -o CheckFeature $2 $4
+$3 -o CheckFeature $2 $4
+
+if test -f CheckFeature
+then
+   if ./CheckFeature
+   then
+      echo "*** have feature: $1"
+      echo "#ifndef NTL_HAVE_$1" >  "../include/NTL/HAVE_$1.h"
+      echo "#define NTL_HAVE_$1" >> "../include/NTL/HAVE_$1.h"
+      echo "#endif"              >> "../include/NTL/HAVE_$1.h"
+      sh RemoveProg CheckFeature
+      exit 0
+   fi
+fi
+
+echo "*** DO NOT have feature: $1"
+sh RemoveProg CheckFeature
+exit 0
+

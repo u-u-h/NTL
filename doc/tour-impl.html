@@ -187,7 +187,7 @@ basic arithmetic operations on integers represented as doubles and conversions f
 to doubles produce <i>exact</i> results, provided the inputs and outputs
 are less than <tt>2^p</tt> in absolute value,
 <li>
-assuming no overflow, <tt>x - long(x)</tt> produces an exact result.
+assuming no overflow, <tt>x - long(x)</tt> produces an exact result for nonnegative <tt>x</tt>.
 </ul>
 
 <p>
@@ -210,12 +210,20 @@ unless you tell them.
 With Intel's C compiler <tt>icc</tt>, for example,
 you should compile NTL with the flag <tt>-fp-model strict</tt>
 to enforce strict adherence to floating point standards.
+That said, some effort has been made to ensure that NTL
+works correctly even if the compiler does perform such
+regrouping, including replacement of <tt>x/y<tt> 
+by <tt>x*(1/y)</tt>.
+
+<p>
 Also, you should be wary of compiling using an optimization
 level higher than the default <tt>-O2</tt> --
 this may break some floating point assumptions (and maybe
 some other assumptions as well).
 
-
+<p>
+In any case, programs that compile against NTL header files
+should compile correctly, even under very aggressive optimizations.
 
 <p>
 One big problem with the IEEE standard is that it allows intermediate
@@ -250,7 +258,7 @@ Another problem is that some hardware (especially newer Intel chips)
 support fused multiply-add (FMA) instructions.
 Again, this is only a problem for <tt>quad_float</tt>, and some
 care is taken to detect the problem and to work around it.
-The rest of NTL will work fine.
+The rest of NTL will work fine regardles.
 
 
 

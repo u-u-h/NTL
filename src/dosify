@@ -62,9 +62,6 @@ cp $5 dos/tests
 cp $6 dos/src
 
 cp ../include/NTL/def_config.h dos/include/NTL/config.h
-cp ../include/NTL/have_LL_no.h dos/include/NTL/have_LL.h
-cp ../include/NTL/have_builtin_clzl_no.h dos/include/NTL/have_builtin_clzl.h
-cp ../include/NTL/have_avx_no.h dos/include/NTL/have_avx.h
-cp ../include/NTL/have_fma_no.h dos/include/NTL/have_fma.h
+sh ResetFeatures dos
 
 

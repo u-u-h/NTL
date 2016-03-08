@@ -123,7 +123,7 @@ zz_pPush() { bak.save(); }
 explicit zz_pPush(const zz_pContext& context) { bak.save(); context.restore(); }
 
 explicit zz_pPush(long p, long maxroot=NTL_FFTMaxRoot) 
-   { bak.save(); zz_pContext c(p); c.restore(); }
+   { bak.save(); zz_pContext c(p, maxroot); c.restore(); }
 
 zz_pPush(INIT_FFT_TYPE, long index) 
    { bak.save(); zz_pContext c(INIT_FFT, index); c.restore(); }

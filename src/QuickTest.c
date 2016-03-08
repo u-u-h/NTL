@@ -127,6 +127,20 @@ int main()
    cerr << "NTL_HAVE_LL_TYPE\n";
 #endif
 
+#ifdef NTL_HAVE_BUILTIN_CLZL
+   cerr << "NTL_HAVE_BUILTIN_CLZL\n";
+#endif
+
+#ifdef NTL_HAVE_AVX
+   cerr << "NTL_HAVE_AVX\n";
+#endif
+
+#ifdef NTL_HAVE_FMA
+   cerr << "NTL_HAVE_FMA\n";
+#endif
+
+
+
 #ifdef NTL_LONGDOUBLE_SP_MULMOD
    cerr << "NTL_LONGDOUBLE_SP_MULMOD\n";
 #endif

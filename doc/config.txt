@@ -485,13 +485,11 @@ NTL_NO_INIT_TRANS=off
 
 NTL_DISABLE_LONGDOUBLE=off
 
-# Explicitly disables us of long double arithmetic in the 
-# single-precision modular arithmetic routines
+# Explicitly disables us of long double arithmetic 
 
 NTL_DISABLE_LONGLONG=off
 
-# Explicitly disables us of long long arithmetic in the 
-# single-precision modular arithmetic routines
+# Explicitly disables us of long long arithmetic 
 
 NTL_MAXIMIZE_SP_NBITS=on
 

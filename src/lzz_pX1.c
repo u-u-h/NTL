@@ -1080,13 +1080,14 @@ void build(zz_pXAltArgument& altH, const zz_pXArgument& H, const zz_pXModulus& F
 {
    altH.orig = &H;
 
-   if (H.H.length() < 10 || F.n < 50) { altH.strategy = 0; return; }
 
 #ifdef NTL_HAVE_LL_TYPE
    altH.mem.kill();
    altH.row.kill();
    altH.dmem.kill();
    altH.drow.kill();
+
+   if (H.H.length() < 10 || F.n < 50) { altH.strategy = 0; return; }
 
    altH.n = F.n;
    altH.m = H.H.length()-1;

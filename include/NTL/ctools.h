@@ -4,10 +4,10 @@
 
 #include <NTL/config.h>
 #include <NTL/mach_desc.h>
-#include <NTL/have_LL.h>
-#include <NTL/have_builtin_clzl.h>
-#include <NTL/have_avx.h>
-#include <NTL/have_avx.h>
+#include <NTL/HAVE_LL_TYPE.h>
+#include <NTL/HAVE_BUILTIN_CLZL.h>
+#include <NTL/HAVE_AVX.h>
+#include <NTL/HAVE_FMA.h>
 
 
 /*
@@ -73,6 +73,26 @@
 #if (!defined(NTL_ULL_TYPE))
 
 #define NTL_ULL_TYPE unsigned long long
+
+#endif
+
+
+#ifdef NTL_HAVE_LL_TYPE
+
+typedef NTL_LL_TYPE _ntl_longlong;
+typedef NTL_ULL_TYPE _ntl_ulonglong;
+// typenames are more convenient than macros
+
+#else
+
+#undef NTL_LL_TYPE
+#undef NTL_ULL_TYPE
+// prevent any use of these macros
+
+class _ntl_longlong { private: _ntl_longlong() { } };
+class _ntl_ulonglong { private: _ntl_ulonglong() { } };
+// cannot create variables of these types
+
 
 #endif
 

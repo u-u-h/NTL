@@ -298,8 +298,7 @@ using the configure script.
 #if @{NTL_DISABLE_LONGDOUBLE}
 #define NTL_DISABLE_LONGDOUBLE
 
-/* Explicitly disables us of long double arithmetic in the 
- * single-precision modular arithmetic routines
+/* Explicitly disables us of long double arithmetic
  */
 
 #endif
@@ -308,8 +307,7 @@ using the configure script.
 #if @{NTL_DISABLE_LONGLONG}
 #define NTL_DISABLE_LONGLONG
 
-/* Explicitly disables us of long long arithmetic in the 
- * single-precision modular arithmetic routines
+/* Explicitly disables us of long long arithmetic 
  */
 
 #endif

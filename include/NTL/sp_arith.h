@@ -305,6 +305,35 @@ long sp_CorrectExcessQuo(T& q, unsigned long a, long n, long amt=1)
 
 
 
+#ifdef NTL_HAVE_BUILTIN_CLZL
+
+static inline long 
+sp_CountLeadingZeros(unsigned long x)
+{
+   return __builtin_clzl(x);
+}
+
+#else
+
+static inline long 
+sp_CountLeadingZeros(unsigned long x)
+{
+   long res = NTL_BITS_PER_LONG-NTL_SP_NBITS;
+   x = x << NTL_BITS_PER_LONG-NTL_SP_NBITS;
+   while (x < (1UL << (NTL_BITS_PER_LONG-1))) {
+      x <<= 1;
+      res++;
+   }
+
+   return res;
+}
+
+
+#endif
+
+
+
+
 static inline 
 long AddMod(long a, long b, long n)
 {
@@ -626,35 +655,6 @@ sp_NormalizedPrepMulMod(long n)
 }
 
 #endif
-
-
-
-#ifdef NTL_HAVE_BUILTIN_CLZL
-
-static inline long 
-sp_CountLeadingZeros(unsigned long x)
-{
-   return __builtin_clzl(x);
-}
-
-#else
-
-static inline long 
-sp_CountLeadingZeros(unsigned long x)
-{
-   long res = NTL_BITS_PER_LONG-NTL_SP_NBITS;
-   x = x << NTL_BITS_PER_LONG-NTL_SP_NBITS;
-   while (x < (1UL << (NTL_BITS_PER_LONG-1))) {
-      x <<= 1;
-      res++;
-   }
-
-   return res;
-}
-
-
-#endif
-
 
 
 static inline sp_inverse

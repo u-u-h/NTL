@@ -1,4 +1,14 @@
+
+
+#define NTL_HAVE_LL_TYPE
+// DIRT: we need to define this here so that ctools.h
+// does not undefine the LL type macros
+
 #include <NTL/ctools.h>
+
+#ifdef NTL_DISABLE_LONGLONG
+#error "LL_TYPE disabled"
+#endif
 
 void touch(unsigned long& x);
 void touch(long& x);

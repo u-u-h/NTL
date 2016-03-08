@@ -9,8 +9,6 @@
 
 
 
-ARGS=""
-rm -f RETRY_CONFIG
 
 if test $# -ne 0
 then
@@ -18,20 +16,4 @@ then
 else
    perl DoConfig
 fi
-
-while test -f RETRY_CONFIG
-do
-   ARGS="$ARGS `cat RETRY_CONFIG`"
-   rm RETRY_CONFIG
-
-   if test $# -ne 0
-   then
-      perl DoConfig "$@" $ARGS
-   else
-      perl DoConfig $ARGS
-   fi
-
-done
-
-
 

@@ -22,7 +22,7 @@ typedef _ntl_gbigint_is_opaque  _ntl_gbigint_body;
 #endif
 
 
-#if (defined(NTL_HAVE_LL_TYPE) && !defined(NTL_LEGACY_SP_MULMOD) && !defined(NTL_DISABLE_LONGLONG)) 
+#if (defined(NTL_HAVE_LL_TYPE) && !defined(NTL_LEGACY_SP_MULMOD))
 
 #define NTL_LONGLONG_SP_MULMOD
 
