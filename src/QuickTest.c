@@ -199,10 +199,6 @@ int main()
 #endif
 
 
-#ifdef NTL_PCLMUL
-   cerr << "NTL_PCLMUL\n";
-#endif
-
 
 #ifdef NTL_LONG_LONG_TYPE
    cerr << "NTL_LONG_LONG_TYPE: ";
@@ -312,10 +308,14 @@ cerr << "Performance Options:\n";
    cerr << "NTL_GF2X_ALTCODE1\n";
 #endif
 
-
 #ifdef NTL_GF2X_NOINLINE
    cerr << "NTL_GF2X_NOINLINE\n";
 #endif
+
+#ifdef NTL_PCLMUL
+   cerr << "NTL_PCLMUL\n";
+#endif
+
 
    cerr << "\n\n";
 
@@ -442,11 +442,11 @@ cerr << "Performance Options:\n";
    mul(j3, j1, j2);
 
    t = GetTime();
-   for (i = 0; i < 200; i++) mul(j3, j1, j2);
+   for (i = 0; i < 500; i++) mul(j3, j1, j2);
    t = GetTime()-t;
 
    cerr << "time to multiply degree 1023 polynomials\n   modulo a 1024-bit number: ";
-   cerr << (t/200) << "s";
+   cerr << (t/500) << "s";
    cerr << "\n";
 
    GF2X_time();

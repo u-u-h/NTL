@@ -387,6 +387,14 @@ inline void ForceToMem(double *p) { }
 #endif
 
 
+inline double TrueDouble(double x)
+{
+   ForceToMem(&x);
+   return x;
+}
+
+
+
 
 void PrintTime(NTL_SNS ostream& s, double t);
 

@@ -44,6 +44,15 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
+
+
+#ifdef __INTEL_COMPILER
+#pragma float_control(precise,on)
+#endif
+
+// NOTE: the above will force the Intel compiler to adhere to
+// language standards, which it does not do by default
+
 #include <NTL/quad_float.h>
 #include <NTL/RR.h>
 
@@ -113,40 +122,36 @@ END_FIX
 
 
 #if (NTL_BITS_PER_LONG >= NTL_DOUBLE_PRECISION)
+
+
 quad_float to_quad_float(long n)
 {
-START_FIX
    DOUBLE xhi, xlo;
-   DOUBLE u, v;
 
-   xhi = double(n);
+   xhi = TrueDouble(n);
 
    // Because we are assuming 2's compliment integer
    // arithmetic, the following prevents long(xhi) from overflowing.
 
    if (n > 0)
-      xlo = double(n+long(-xhi));
+      xlo = TrueDouble(n+long(-xhi));
    else
-      xlo = double(n-long(xhi));
+      xlo = TrueDouble(n-long(xhi));
 
    // renormalize...just to be safe
-  
-   u = xhi + xlo;
-   v = xhi - u;
-   v = v + xlo;
-END_FIX
-   return quad_float(u, v);
+
+   quad_float z;
+   normalize(z, xhi, xlo);
+   return z;
 }
 
 quad_float to_quad_float(unsigned long n)
 {
-START_FIX
    DOUBLE xhi, xlo, t;
-   DOUBLE u, v;
 
    const double bnd = double(1L << (NTL_BITS_PER_LONG-2))*4.0;
 
-   xhi = double(n);
+   xhi = TrueDouble(n);
    
    if (xhi >= bnd)
       t = xhi - bnd;
@@ -155,15 +160,11 @@ START_FIX
 
    // we use the "to_long" function here to be as portable as possible.
    long llo = to_long(n - (unsigned long)(t));
-   xlo = double(llo);
+   xlo = TrueDouble(llo);
 
-   // renormalize...just to be safe
-
-   u = xhi + xlo;
-   v = xhi - u;
-   v = v + xlo;
-END_FIX
-   return quad_float(u, v);
+   quad_float z;
+   normalize(z, xhi, xlo);
+   return z;
 }
 #endif
 
@@ -352,33 +353,70 @@ END_FIX
 }
 
 
+
+#if (NTL_FMA_DETECTED)
+
+double quad_float_zero = 0;
+
+static inline
+double Protect(double x) { return x + quad_float_zero; }
+
+#else
+
+
+static inline
+double Protect(double x) { return x; }
+
+
+#endif
+
+// NOTE: this is really sick: some compilers will issue FMA
+// (fused mul add) instructions which will break correctness.
+// C99 standard is supposed to prevent this across separate
+// statements, but C++ standard doesn't guarantee much at all.
+// In any case, gcc does not even implement the C99 standard
+// correctly.  One could disable this by compiling with
+// an appropriate flag: -mno-fma works for gcc, while -no-fma works
+// for icc.  icc and MSVC++ also support pragmas to do this:
+// #pragma fp_contract(off).  There is also a compiler flag for
+// gcc: -ffp-contract=off, but -mno-fma seems more widely supported.
+// These flags work for clang, as well.
+//
+// But in any case, I'd rather not mess with getting these flags right.
+// By calling Protect(a*b), this has the effect of forcing the
+// compiler to compute a*b + 0.  Assuming the compiler otherwise
+// does not perform any re-association, this should do the trick.
+// There is a small performance penalty, but it should be reasonable.
+
+
+
 quad_float operator *(const quad_float& x,const quad_float& y ) {
 START_FIX
   DOUBLE hx, tx, hy, ty, C, c;
   DOUBLE t1, t2;
 
-  C = NTL_QUAD_FLOAT_SPLIT*x.hi;
+  C = Protect(NTL_QUAD_FLOAT_SPLIT*x.hi);
   hx = C-x.hi;
-  c = NTL_QUAD_FLOAT_SPLIT*y.hi;
+  c = Protect(NTL_QUAD_FLOAT_SPLIT*y.hi);
   hx = C-hx;
   tx = x.hi-hx;
   hy = c-y.hi;
-  C = x.hi*y.hi;
+  C = Protect(x.hi*y.hi);
   hy = c-hy;
   ty = y.hi-hy;
 
   // c = ((((hx*hy-C)+hx*ty)+tx*hy)+tx*ty)+(x.hi*y.lo+x.lo*y.hi);
   
-  t1 = hx*hy;
+  t1 = Protect(hx*hy);
   t1 = t1-C;
-  t2 = hx*ty;
+  t2 = Protect(hx*ty);
   t1 = t1+t2;
-  t2 = tx*hy;
+  t2 = Protect(tx*hy);
   t1 = t1+t2;
-  t2 = tx*ty;
+  t2 = Protect(tx*ty);
   c = t1+t2;
-  t1 = x.hi*y.lo;
-  t2 = x.lo*y.hi;
+  t1 = Protect(x.hi*y.lo);
+  t2 = Protect(x.lo*y.hi);
   t1 = t1+t2;
   c = c + t1;
 
@@ -396,28 +434,28 @@ START_FIX
   DOUBLE hx, tx, hy, ty, C, c;
   DOUBLE t1, t2;
 
-  C = NTL_QUAD_FLOAT_SPLIT*x.hi;
+  C = Protect(NTL_QUAD_FLOAT_SPLIT*x.hi);
   hx = C-x.hi;
-  c = NTL_QUAD_FLOAT_SPLIT*y.hi;
+  c = Protect(NTL_QUAD_FLOAT_SPLIT*y.hi);
   hx = C-hx;
   tx = x.hi-hx;
   hy = c-y.hi;
-  C = x.hi*y.hi;
+  C = Protect(x.hi*y.hi);
   hy = c-hy;
   ty = y.hi-hy;
 
   // c = ((((hx*hy-C)+hx*ty)+tx*hy)+tx*ty)+(x.hi*y.lo+x.lo*y.hi);
   
-  t1 = hx*hy;
+  t1 = Protect(hx*hy);
   t1 = t1-C;
-  t2 = hx*ty;
+  t2 = Protect(hx*ty);
   t1 = t1+t2;
-  t2 = tx*hy;
+  t2 = Protect(tx*hy);
   t1 = t1+t2;
-  t2 = tx*ty;
+  t2 = Protect(tx*ty);
   c = t1+t2;
-  t1 = x.hi*y.lo;
-  t2 = x.lo*y.hi;
+  t1 = Protect(x.hi*y.lo);
+  t2 = Protect(x.lo*y.hi);
   t1 = t1+t2;
   c = c + t1;
 
@@ -438,25 +476,25 @@ START_FIX
   DOUBLE t1;
 
   C = x.hi/y.hi;
-  c = NTL_QUAD_FLOAT_SPLIT*C;
+  c = Protect(NTL_QUAD_FLOAT_SPLIT*C);
   hc = c-C;
-  u = NTL_QUAD_FLOAT_SPLIT*y.hi;
+  u = Protect(NTL_QUAD_FLOAT_SPLIT*y.hi);
   hc = c-hc;
   tc = C-hc;
   hy = u-y.hi;
-  U = C * y.hi;
+  U = Protect(C * y.hi);
   hy = u-hy;
   ty = y.hi-hy;
 
   // u = (((hc*hy-U)+hc*ty)+tc*hy)+tc*ty;
 
-  u = hc*hy;
+  u = Protect(hc*hy);
   u = u-U;
-  t1 = hc*ty;
+  t1 = Protect(hc*ty);
   u = u+t1;
-  t1 = tc*hy;
+  t1 = Protect(tc*hy);
   u = u+t1;
-  t1 = tc*ty;
+  t1 = Protect(tc*ty);
   u = u+t1;
 
   // c = ((((x.hi-U)-u)+x.lo)-C*y.lo)/y.hi;
@@ -464,7 +502,7 @@ START_FIX
   c = x.hi-U;
   c = c-u;
   c = c+x.lo;
-  t1 = C*y.lo;
+  t1 = Protect(C*y.lo);
   c = c - t1;
   c = c/y.hi;
   
@@ -482,25 +520,25 @@ START_FIX
   DOUBLE t1;
 
   C = x.hi/y.hi;
-  c = NTL_QUAD_FLOAT_SPLIT*C;
+  c = Protect(NTL_QUAD_FLOAT_SPLIT*C);
   hc = c-C;
-  u = NTL_QUAD_FLOAT_SPLIT*y.hi;
+  u = Protect(NTL_QUAD_FLOAT_SPLIT*y.hi);
   hc = c-hc;
   tc = C-hc;
   hy = u-y.hi;
-  U = C * y.hi;
+  U = Protect(C * y.hi);
   hy = u-hy;
   ty = y.hi-hy;
 
   // u = (((hc*hy-U)+hc*ty)+tc*hy)+tc*ty;
 
-  u = hc*hy;
+  u = Protect(hc*hy);
   u = u-U;
-  t1 = hc*ty;
+  t1 = Protect(hc*ty);
   u = u+t1;
-  t1 = tc*hy;
+  t1 = Protect(tc*hy);
   u = u+t1;
-  t1 = tc*ty;
+  t1 = Protect(tc*ty);
   u = u+t1;
 
   // c = ((((x.hi-U)-u)+x.lo)-C*y.lo)/y.hi;
@@ -508,7 +546,7 @@ START_FIX
   c = x.hi-U;
   c = c-u;
   c = c+x.lo;
-  t1 = C*y.lo;
+  t1 = Protect(C*y.lo);
   c = c - t1;
   c = c/y.hi;
   
@@ -537,18 +575,18 @@ START_FIX
   DOUBLE p,q,hx,tx,u,uu,cc;
   DOUBLE t1;
 
-  p = NTL_QUAD_FLOAT_SPLIT*c; 
+  p = Protect(NTL_QUAD_FLOAT_SPLIT*c); 
   hx = (c-p); 
   hx = hx+p; 
   tx = c-hx;
-  p = hx*hx;
-  q = hx*tx;
+  p = Protect(hx*hx);
+  q = Protect(hx*tx);
   q = q+q;
 
   u = p+q;
   uu = p-u;
   uu = uu+q;
-  t1 = tx*tx;
+  t1 = Protect(tx*tx);
   uu = uu+t1;
 
 
@@ -912,3 +950,4 @@ long operator!=(const quad_float& x, const quad_float& y)
 
 
 NTL_END_IMPL
+

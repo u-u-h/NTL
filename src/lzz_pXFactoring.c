@@ -1,5 +1,4 @@
 
-
 #include <NTL/lzz_pXFactoring.h>
 #include <NTL/vec_vec_lzz_p.h>
 #include <NTL/FacVec.h>
@@ -1534,6 +1533,7 @@ NTL_THREAD_LOCAL long zz_pX_GCDTableSize = 4;
 NTL_THREAD_LOCAL static vec_zz_pX *BabyStepFile = 0;
 NTL_THREAD_LOCAL static vec_zz_pX *GiantStepFile = 0;
 NTL_THREAD_LOCAL static zz_pXArgument *HHH = 0;
+NTL_THREAD_LOCAL static zz_pXAltArgument *HHH1 = 0;
 NTL_THREAD_LOCAL static long OldN = 0;
 
 
@@ -1568,13 +1568,16 @@ void GenerateBabySteps(zz_pX& h1, const zz_pX& f, const zz_pX& h, long k,
    else {
       zz_pXArgument H;
       build(H, h, F, 2*rootn);
+
+      zz_pXAltArgument H1;
+      build(H1, H, F);
    
    
       for (i = 1; i <= k-1; i++) {
          (*BabyStepFile)(i) = h1; 
    
-         CompMod(h1, h1, H, F);
-         if (verbose) cerr << "+";
+         CompMod(h1, h1, H1, F);
+         if (verbose) cerr << ".";
       }
    }
    
@@ -1592,6 +1595,7 @@ void GenerateGiantSteps(const zz_pX& f, const zz_pX& h, long l, long verbose)
    build(F, f);
 
    build(*HHH, h, F, 2*SqrRoot(F.n));
+   build(*HHH1, *HHH, F);
 
    OldN = F.n;
 
@@ -1678,11 +1682,12 @@ void FetchGiantStep(zz_pX& g, long gs, const zz_pXModulus& F)
          rem(last, last, F);
          for (long i = 0; i < (*HHH).H.length(); i++)
             rem((*HHH).H[i], (*HHH).H[i], F);
+         build(*HHH1, *HHH, F);
          OldN = F.n;
       }
 
       (*GiantStepFile).SetLength(l+1);
-      CompMod((*GiantStepFile)(l+1), last, *HHH, F);
+      CompMod((*GiantStepFile)(l+1), last, *HHH1, F);
       g = (*GiantStepFile)(l+1);
    }
    else if (deg((*GiantStepFile)(gs)) >= F.n)
@@ -1911,16 +1916,33 @@ void NewDDF(vec_pair_zz_pX_long& factors,
    }
 
    long B = deg(f)/2;
+   
    long k = SqrRoot(B);
+
+   // we double the number of baby steps if it seems like
+   // baby steps are significantly cheaper than giant steps.
+   // The calculations below are closely tied to a test in GenerateBabySteps:
+   // if nbm >= sdf/2, then scale should be 1 (baby steps and giant steps balanced)
+   if (B >= 500) {
+      long sdf = SqrRoot(deg(f));
+      long nbm = NumBits(zz_p::modulus());
+      double scale = 0.25*double(sdf)/double(nbm);
+      if (scale < 1) scale = 1;
+      if (scale > 2) scale = 2;
+      k = long(scale*k);
+   }
+
    long l = (B+k-1)/k;
 
    vec_zz_pX local_BabyStepFile;
    vec_zz_pX local_GiantStepFile;
    zz_pXArgument local_HHH;
+   zz_pXAltArgument local_HHH1;
 
    BabyStepFile = &local_BabyStepFile;
    GiantStepFile = &local_GiantStepFile;
    HHH = &local_HHH;
+   HHH1 = &local_HHH1;
    
    zz_pX h1;
    GenerateBabySteps(h1, f, h, k, verbose);

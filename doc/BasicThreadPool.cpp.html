@@ -1,251 +1,236 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <html>
 <head>
+<title>/Volumes/unix-files/u/ntl-new/ntl-9.6.3/doc/BasicThreadPool.cpp.html</title>
+<meta name="Generator" content="Vim/7.1">
 <meta http-equiv="content-type" content="text/html; charset=UTF-8">
-<title>/Volumes/Unix/unix-files.noindex/ntl-new/ntl-9.6.0/doc/BasicThreadPool.cpp.html</title>
-<meta name="Generator" content="Vim/7.3">
-<meta name="plugin-version" content="vim7.3_v6">
-<meta name="syntax" content="cpp">
-<meta name="settings" content="use_css">
-<style type="text/css">
-<!--
-pre { font-family: monospace; color: #000000; background-color: #ffffff; }
-body { font-family: monospace; color: #000000; background-color: #ffffff; }
-.Constant { color: #ff8c00; }
-.Statement { color: #b03060; font-weight: bold; }
-.Type { color: #008b00; font-weight: bold; }
-.Comment { color: #0000ee; font-style: italic; }
--->
-</style>
 </head>
-<body>
-<pre>
-
-
-<span class="Comment">/*</span><span class="Comment">***********************************************************************</span>
-
-<span class="Comment">MODULE: BasicThreadPool</span>
-
-<span class="Comment">SUMMARY:</span>
-
-<span class="Comment">Some simple thread pooling.</span>
-
-<span class="Comment">You create a thread pool by constructing a BasicThreadPool object.</span>
-<span class="Comment">For example:</span>
-
-<span class="Comment">   long nthreads = 4;</span>
-<span class="Comment">   BasicThreadPool pool(nthreads);</span>
-
-<span class="Comment">creates a thread pool of 4 threads.  These threads will exist</span>
-<span class="Comment">until the destructor for pool is called.  </span>
-
-<span class="Comment">The simplest way to use a thread pools is as follows.</span>
-<span class="Comment">Suppose you have a task that consists of N subtasks,</span>
-<span class="Comment">indexed 0..N-1.  Then you can write:</span>
-
-
-<span class="Comment">   pool.exec_range(N, </span>
-<span class="Comment">      [&amp;](long first, long last) {</span>
-<span class="Comment">         for (long i = first; i &lt; last; i++) {</span>
-<span class="Comment">            ... code to process subtask i ...</span>
-<span class="Comment">         }</span>
-<span class="Comment">      }</span>
-<span class="Comment">   );</span>
-
-<span class="Comment">The second argument to exec_range is a C++11 &quot;lambda&quot;.</span>
-<span class="Comment">The &quot;[&amp;]&quot; indicates that all local variables in the calling</span>
-<span class="Comment">context are captured by reference, so the lambda body can </span>
-<span class="Comment">reference all visible local variables directly.  C++11 provides</span>
-<span class="Comment">other methods for capturing local variables.</span>
-
-<span class="Comment">As a more concrete example, we could parallelize the following</span>
-<span class="Comment">calculation:</span>
-
-<span class="Comment">   void mul(ZZ *x, const ZZ *a, const ZZ *b, long n) </span>
-<span class="Comment">   {</span>
-<span class="Comment">      for (long i = 0; i &lt; n; i++)</span>
-<span class="Comment">         mul(x[i], a[i], b[i]);</span>
-<span class="Comment">   }</span>
-<span class="Comment">   </span>
-<span class="Comment">as follows:</span>
-
-<span class="Comment">   void mul(ZZ *x, const ZZ *a, const ZZ *b, long n, </span>
-<span class="Comment">            BasicThreadPool *pool) </span>
-<span class="Comment">   {</span>
-<span class="Comment">      pool-&gt;exec_range(n,</span>
-<span class="Comment">      [&amp;](long first, long last) {</span>
-<span class="Comment">         for (long i = first; i &lt; last; i++)</span>
-<span class="Comment">            mul(x[i], a[i], b[i]); </span>
-<span class="Comment">      } );</span>
-<span class="Comment">   }</span>
-
-
-<span class="Comment">As another example, we could parallelize the following</span>
-<span class="Comment">calculation:</span>
-
-<span class="Comment">   void mul(ZZ_p *x, const ZZ_p *a, const ZZ_p *b, long n) </span>
-<span class="Comment">   {</span>
-<span class="Comment">      for (long i = 0; i &lt; n; i++)</span>
-<span class="Comment">         mul(x[i], a[i], b[i]);</span>
-<span class="Comment">   }</span>
-<span class="Comment">   </span>
-<span class="Comment">as follows:</span>
-
-<span class="Comment">   void mul(ZZ_p *x, const ZZ_p *a, const ZZ_p *b, long n, </span>
-<span class="Comment">            BasicThreadPool *pool) </span>
-<span class="Comment">   {</span>
-<span class="Comment">      ZZ_pContext context;</span>
-<span class="Comment">      context.save();</span>
-<span class="Comment">      </span>
-<span class="Comment">      pool-&gt;exec_range(n,</span>
-<span class="Comment">      [&amp;](long first, long last) {</span>
-<span class="Comment">         context.restore();</span>
-<span class="Comment">         for (long i = first; i &lt; last; i++)</span>
-<span class="Comment">            mul(x[i], a[i], b[i]); </span>
-<span class="Comment">      } );</span>
-<span class="Comment">   }</span>
-
-<span class="Comment">This illustrates a simple and efficient means for ensuring that</span>
-<span class="Comment">all threads are working with the same ZZ_p modulus.</span>
-
-<span class="Comment">====================================================================</span>
-
-<span class="Comment">A lower-level interface is also provided.</span>
-<span class="Comment">One can write:</span>
-
-<span class="Comment">   pool.exec_index(n,</span>
-<span class="Comment">      [&amp;](long index) {</span>
-<span class="Comment">         ... code to process index i ...</span>
-<span class="Comment">      }</span>
-<span class="Comment">   );</span>
-
-<span class="Comment">This will activate n threads with indices 0..n-1, and execute the given code on</span>
-<span class="Comment">each index.  The parameter n must be in the range 0..nthreads, otherwise an</span>
-<span class="Comment">error is raised.</span>
-
-<span class="Comment">This lower-level interface is useful in some cases, especially when memory is</span>
-<span class="Comment">managed in some special way.  For convenience, a method is provided to break</span>
-<span class="Comment">subtasks up into smaller, almost-equal-sized groups of subtasks:</span>
-
-<span class="Comment">   Vec&lt;long&gt; pvec;</span>
-<span class="Comment">   long n = pool.SplitProblems(N, pvec);</span>
-
-<span class="Comment">can be used for this.  N is the number of subtasks, indexed 0..N-1.  This</span>
-<span class="Comment">method will compute n as needed by exec_index, and the range of subtasks to be</span>
-<span class="Comment">processed by a given index in the range 0..n-1 is pvec[index]..pvec[index+1]-1</span>
-<span class="Comment">Thus, the logic of exec_range example can be written using the lower-level</span>
-<span class="Comment">exec_index interface as follows:</span>
-
-<span class="Comment">   </span>
-<span class="Comment">   Vec&lt;long&gt; pvec;</span>
-<span class="Comment">   long n = pool.SplitProblems(N, pvec);</span>
-<span class="Comment">   pool.exec_index(n,</span>
-<span class="Comment">      [&amp;](long index) {</span>
-<span class="Comment">         long first = pvec[index];</span>
-<span class="Comment">         long last = pvec[index+1];</span>
-<span class="Comment">         for (long i = first; i &lt; last; i++) {</span>
-<span class="Comment">            ... code to process subtask i ...</span>
-<span class="Comment">         }</span>
-<span class="Comment">      }</span>
-<span class="Comment">   );</span>
-
-<span class="Comment">However, with this approach, memory or other resources can be assigned to each</span>
-<span class="Comment">index = 0..n-1, and managed externally. </span>
-
-<span class="Comment">====================================================================</span>
-
-<span class="Comment">NOTES:</span>
-
-<span class="Comment">When one activates a thread pool with nthreads threads, the *current* thread</span>
-<span class="Comment">(the one activating the pool) will also participate in the computation.  This</span>
-<span class="Comment">means that the thread pool only contains nthreads-1 other threads.</span>
-
-<span class="Comment">If, during an activation, any thread throws an exception, it will be caught and</span>
-<span class="Comment">rethrown in the activating thread when all the threads complete.  If more than</span>
-<span class="Comment">one thread throws an exception, the first one that is caught is the one that is</span>
-<span class="Comment">rethrown.</span>
-
-<span class="Comment">Methods are also provided for adding, deleting, and moving threads in and among</span>
-<span class="Comment">thread pools.</span>
-
-<span class="Comment">If NTL_THREADS=off, the corresponding header file may be included,</span>
-<span class="Comment">by the BasicThreadPool class is not defined.</span>
-
-<span class="Comment">THREAD BOOSTING:</span>
-
-<span class="Comment">While users are free to use a thread pool as they wish, NTL can be enabled so</span>
-<span class="Comment">that it *internally* uses a thread pool to speed up certain computations.  This</span>
-<span class="Comment">is currently a work in progress.  To use this feature, NTL should be configured</span>
-<span class="Comment">with NTL_THREAD_BOOST=on.  The user can then initialize the (thread local)</span>
-<span class="Comment">variable NTLThreadPool, either directly or via the convenience function</span>
-<span class="Comment">SetNumThreads (see below).</span>
-
-<span class="Comment">NTL applications may use the NTLThreadPool themselves: the logic is designed so</span>
-<span class="Comment">that if this pool is already activated when entering a thread-boosted routine,</span>
-<span class="Comment">the thread-boosting is temporarily disabled.  This means that an application</span>
-<span class="Comment">can seamlessly use higer-level parallization when possible (which is usually</span>
-<span class="Comment">more effective) or rely on NTL's internal parallelization at a lower leve.</span>
-
-
-<span class="Comment">**************************************************************************</span><span class="Comment">*/</span>
-
-
-<span class="Type">class</span> BasicThreadPool {
-<span class="Statement">private</span>:
-
-  BasicThreadPool(<span class="Type">const</span> BasicThreadPool&amp;); <span class="Comment">// disabled</span>
-  <span class="Type">void</span> <span class="Statement">operator</span>=(<span class="Type">const</span> BasicThreadPool&amp;); <span class="Comment">// disabled</span>
-
-<span class="Statement">public</span>:
-
-  BasicThreadPool(<span class="Type">long</span> nthreads);
-  <span class="Comment">// creates a pool with nthreads threads, including the current thread</span>
-  <span class="Comment">// (so nthreads-1 other threads get created)</span>
-
-  <span class="Type">template</span>&lt;<span class="Type">class</span> Fct&gt;
-  <span class="Type">void</span> exec_index(<span class="Type">long</span> cnt, Fct fct);
-  <span class="Comment">// activate by index (see example usage above)</span>
-
-  <span class="Type">template</span>&lt;<span class="Type">class</span> Fct&gt;
-  <span class="Type">void</span> exec_range(<span class="Type">long</span> sz, Fct fct);
-  <span class="Comment">// activate by range (see example usage above)</span>
-
-  <span class="Type">long</span> SplitProblems(<span class="Type">long</span> nproblems, Vec&lt;<span class="Type">long</span>&gt;&amp; pvec) <span class="Type">const</span>;
-  <span class="Comment">// splits nproblems problems among (at most) nthreads threads.</span>
-  <span class="Comment">// returns the actual number of threads nt to be used, and </span>
-  <span class="Comment">// initializes pvec to have length nt+1, so that for t = 0..nt-1,</span>
-  <span class="Comment">// thread t processes subproblems pvec[t]..pvec[t+1]-1</span>
-
-  <span class="Type">long</span> NumThreads() <span class="Type">const</span>;
-  <span class="Comment">// return number of threads (including current thread)</span>
-
-  <span class="Type">bool</span> active() <span class="Type">const</span>;
-  <span class="Comment">// indicates an activation is in process</span>
-
-  <span class="Type">void</span> add(<span class="Type">long</span> n = <span class="Constant">1</span>);
-  <span class="Comment">// add n threads to the pool</span>
-
-  <span class="Type">void</span> remove(<span class="Type">long</span> n = <span class="Constant">1</span>);
-  <span class="Comment">// remove n threads from the pool</span>
-
-  <span class="Type">void</span> move(BasicThreadPool&amp; other, <span class="Type">long</span> n = <span class="Constant">1</span>)
-  <span class="Comment">// move n threads from other pool to this pool</span>
-
-};
-
-
-
-<span class="Comment">// THREAD BOOSTING FEATURES:</span>
-
-<span class="Type">extern</span> thread_local BasicThreadPool *NTLThreadPool;
-<span class="Comment">// pool used internally by NTL with NTL_THREAD_BOOST=on</span>
-
-<span class="Type">void</span> SetNumThreads(<span class="Type">long</span> n);
-<span class="Comment">// convenience routine to set NTLThreadPool (created using new)</span>
-<span class="Comment">// If NTL_THREADS=off, then this is still defined, but does nothing</span>
-
-
-
-</pre>
-</body>
+<body bgcolor="#ffffff" text="#000000"><font face="monospace">
+<br>
+<br>
+<font color="#0000ed"><i>/*</i></font><font color="#0000ed"><i>***********************************************************************</i></font><br>
+<br>
+<font color="#0000ed"><i>MODULE: BasicThreadPool</i></font><br>
+<br>
+<font color="#0000ed"><i>SUMMARY:</i></font><br>
+<br>
+<font color="#0000ed"><i>Some simple thread pooling.</i></font><br>
+<br>
+<font color="#0000ed"><i>You create a thread pool by constructing a BasicThreadPool object.</i></font><br>
+<font color="#0000ed"><i>For example:</i></font><br>
+<br>
+<font color="#0000ed"><i>&nbsp;&nbsp; long nthreads = 4;</i></font><br>
+<font color="#0000ed"><i>&nbsp;&nbsp; BasicThreadPool pool(nthreads);</i></font><br>
+<br>
+<font color="#0000ed"><i>creates a thread pool of 4 threads.&nbsp;&nbsp;These threads will exist</i></font><br>
+<font color="#0000ed"><i>until the destructor for pool is called.&nbsp;&nbsp;</i></font><br>
+<br>
+<font color="#0000ed"><i>The simplest way to use a thread pools is as follows.</i></font><br>
+<font color="#0000ed"><i>Suppose you have a task that consists of N subtasks,</i></font><br>
+<font color="#0000ed"><i>indexed 0..N-1.&nbsp;&nbsp;Then you can write:</i></font><br>
+<br>
+<br>
+<font color="#0000ed"><i>&nbsp;&nbsp; pool.exec_range(N, </i></font><br>
+<font color="#0000ed"><i>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[&amp;](long first, long last) {</i></font><br>
+<font color="#0000ed"><i>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; for (long i = first; i &lt; last; i++) {</i></font><br>
+<font color="#0000ed"><i>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;... code to process subtask i ...</i></font><br>
+<font color="#0000ed"><i>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }</i></font><br>
+<font color="#0000ed"><i>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}</i></font><br>
+<font color="#0000ed"><i>&nbsp;&nbsp; );</i></font><br>
+<br>
+<font color="#0000ed"><i>The second argument to exec_range is a C++11 &quot;lambda&quot;.</i></font><br>
+<font color="#0000ed"><i>The &quot;[&amp;]&quot; indicates that all local variables in the calling</i></font><br>
+<font color="#0000ed"><i>context are captured by reference, so the lambda body can </i></font><br>
+<font color="#0000ed"><i>reference all visible local variables directly.&nbsp;&nbsp;C++11 provides</i></font><br>
+<font color="#0000ed"><i>other methods for capturing local variables.</i></font><br>
+<br>
+<font color="#0000ed"><i>As a more concrete example, we could parallelize the following</i></font><br>
+<font color="#0000ed"><i>calculation:</i></font><br>
+<br>
+<font color="#0000ed"><i>&nbsp;&nbsp; void mul(ZZ *x, const ZZ *a, const ZZ *b, long n) </i></font><br>
+<font color="#0000ed"><i>&nbsp;&nbsp; {</i></font><br>
+<font color="#0000ed"><i>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;for (long i = 0; i &lt; n; i++)</i></font><br>
+<font color="#0000ed"><i>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mul(x[i], a[i], b[i]);</i></font><br>
+<font color="#0000ed"><i>&nbsp;&nbsp; }</i></font><br>
+<font color="#0000ed"><i>&nbsp;&nbsp; </i></font><br>
+<font color="#0000ed"><i>as follows:</i></font><br>
+<br>
+<font color="#0000ed"><i>&nbsp;&nbsp; void mul(ZZ *x, const ZZ *a, const ZZ *b, long n, </i></font><br>
+<font color="#0000ed"><i>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;BasicThreadPool *pool) </i></font><br>
+<font color="#0000ed"><i>&nbsp;&nbsp; {</i></font><br>
+<font color="#0000ed"><i>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;pool-&gt;exec_range(n,</i></font><br>
+<font color="#0000ed"><i>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[&amp;](long first, long last) {</i></font><br>
+<font color="#0000ed"><i>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; for (long i = first; i &lt; last; i++)</i></font><br>
+<font color="#0000ed"><i>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;mul(x[i], a[i], b[i]); </i></font><br>
+<font color="#0000ed"><i>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;} );</i></font><br>
+<font color="#0000ed"><i>&nbsp;&nbsp; }</i></font><br>
+<br>
+<br>
+<font color="#0000ed"><i>As another example, we could parallelize the following</i></font><br>
+<font color="#0000ed"><i>calculation:</i></font><br>
+<br>
+<font color="#0000ed"><i>&nbsp;&nbsp; void mul(ZZ_p *x, const ZZ_p *a, const ZZ_p *b, long n) </i></font><br>
+<font color="#0000ed"><i>&nbsp;&nbsp; {</i></font><br>
+<font color="#0000ed"><i>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;for (long i = 0; i &lt; n; i++)</i></font><br>
+<font color="#0000ed"><i>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mul(x[i], a[i], b[i]);</i></font><br>
+<font color="#0000ed"><i>&nbsp;&nbsp; }</i></font><br>
+<font color="#0000ed"><i>&nbsp;&nbsp; </i></font><br>
+<font color="#0000ed"><i>as follows:</i></font><br>
+<br>
+<font color="#0000ed"><i>&nbsp;&nbsp; void mul(ZZ_p *x, const ZZ_p *a, const ZZ_p *b, long n, </i></font><br>
+<font color="#0000ed"><i>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;BasicThreadPool *pool) </i></font><br>
+<font color="#0000ed"><i>&nbsp;&nbsp; {</i></font><br>
+<font color="#0000ed"><i>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ZZ_pContext context;</i></font><br>
+<font color="#0000ed"><i>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;context.save();</i></font><br>
+<font color="#0000ed"><i>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</i></font><br>
+<font color="#0000ed"><i>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;pool-&gt;exec_range(n,</i></font><br>
+<font color="#0000ed"><i>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[&amp;](long first, long last) {</i></font><br>
+<font color="#0000ed"><i>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; context.restore();</i></font><br>
+<font color="#0000ed"><i>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; for (long i = first; i &lt; last; i++)</i></font><br>
+<font color="#0000ed"><i>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;mul(x[i], a[i], b[i]); </i></font><br>
+<font color="#0000ed"><i>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;} );</i></font><br>
+<font color="#0000ed"><i>&nbsp;&nbsp; }</i></font><br>
+<br>
+<font color="#0000ed"><i>This illustrates a simple and efficient means for ensuring that</i></font><br>
+<font color="#0000ed"><i>all threads are working with the same ZZ_p modulus.</i></font><br>
+<br>
+<font color="#0000ed"><i>====================================================================</i></font><br>
+<br>
+<font color="#0000ed"><i>A lower-level interface is also provided.</i></font><br>
+<font color="#0000ed"><i>One can write:</i></font><br>
+<br>
+<font color="#0000ed"><i>&nbsp;&nbsp; pool.exec_index(n,</i></font><br>
+<font color="#0000ed"><i>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[&amp;](long index) {</i></font><br>
+<font color="#0000ed"><i>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ... code to process index i ...</i></font><br>
+<font color="#0000ed"><i>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}</i></font><br>
+<font color="#0000ed"><i>&nbsp;&nbsp; );</i></font><br>
+<br>
+<font color="#0000ed"><i>This will activate n threads with indices 0..n-1, and execute the given code on</i></font><br>
+<font color="#0000ed"><i>each index.&nbsp;&nbsp;The parameter n must be in the range 0..nthreads, otherwise an</i></font><br>
+<font color="#0000ed"><i>error is raised.</i></font><br>
+<br>
+<font color="#0000ed"><i>This lower-level interface is useful in some cases, especially when memory is</i></font><br>
+<font color="#0000ed"><i>managed in some special way.&nbsp;&nbsp;For convenience, a method is provided to break</i></font><br>
+<font color="#0000ed"><i>subtasks up into smaller, almost-equal-sized groups of subtasks:</i></font><br>
+<br>
+<font color="#0000ed"><i>&nbsp;&nbsp; Vec&lt;long&gt; pvec;</i></font><br>
+<font color="#0000ed"><i>&nbsp;&nbsp; long n = pool.SplitProblems(N, pvec);</i></font><br>
+<br>
+<font color="#0000ed"><i>can be used for this.&nbsp;&nbsp;N is the number of subtasks, indexed 0..N-1.&nbsp;&nbsp;This</i></font><br>
+<font color="#0000ed"><i>method will compute n as needed by exec_index, and the range of subtasks to be</i></font><br>
+<font color="#0000ed"><i>processed by a given index in the range 0..n-1 is pvec[index]..pvec[index+1]-1</i></font><br>
+<font color="#0000ed"><i>Thus, the logic of exec_range example can be written using the lower-level</i></font><br>
+<font color="#0000ed"><i>exec_index interface as follows:</i></font><br>
+<br>
+<font color="#0000ed"><i>&nbsp;&nbsp; </i></font><br>
+<font color="#0000ed"><i>&nbsp;&nbsp; Vec&lt;long&gt; pvec;</i></font><br>
+<font color="#0000ed"><i>&nbsp;&nbsp; long n = pool.SplitProblems(N, pvec);</i></font><br>
+<font color="#0000ed"><i>&nbsp;&nbsp; pool.exec_index(n,</i></font><br>
+<font color="#0000ed"><i>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[&amp;](long index) {</i></font><br>
+<font color="#0000ed"><i>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; long first = pvec[index];</i></font><br>
+<font color="#0000ed"><i>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; long last = pvec[index+1];</i></font><br>
+<font color="#0000ed"><i>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; for (long i = first; i &lt; last; i++) {</i></font><br>
+<font color="#0000ed"><i>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;... code to process subtask i ...</i></font><br>
+<font color="#0000ed"><i>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }</i></font><br>
+<font color="#0000ed"><i>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}</i></font><br>
+<font color="#0000ed"><i>&nbsp;&nbsp; );</i></font><br>
+<br>
+<font color="#0000ed"><i>However, with this approach, memory or other resources can be assigned to each</i></font><br>
+<font color="#0000ed"><i>index = 0..n-1, and managed externally. </i></font><br>
+<br>
+<font color="#0000ed"><i>====================================================================</i></font><br>
+<br>
+<font color="#0000ed"><i>NOTES:</i></font><br>
+<br>
+<font color="#0000ed"><i>When one activates a thread pool with nthreads threads, the *current* thread</i></font><br>
+<font color="#0000ed"><i>(the one activating the pool) will also participate in the computation.&nbsp;&nbsp;This</i></font><br>
+<font color="#0000ed"><i>means that the thread pool only contains nthreads-1 other threads.</i></font><br>
+<br>
+<font color="#0000ed"><i>If, during an activation, any thread throws an exception, it will be caught and</i></font><br>
+<font color="#0000ed"><i>rethrown in the activating thread when all the threads complete.&nbsp;&nbsp;If more than</i></font><br>
+<font color="#0000ed"><i>one thread throws an exception, the first one that is caught is the one that is</i></font><br>
+<font color="#0000ed"><i>rethrown.</i></font><br>
+<br>
+<font color="#0000ed"><i>Methods are also provided for adding, deleting, and moving threads in and among</i></font><br>
+<font color="#0000ed"><i>thread pools.</i></font><br>
+<br>
+<font color="#0000ed"><i>If NTL_THREADS=off, the corresponding header file may be included,</i></font><br>
+<font color="#0000ed"><i>by the BasicThreadPool class is not defined.</i></font><br>
+<br>
+<font color="#0000ed"><i>THREAD BOOSTING:</i></font><br>
+<br>
+<font color="#0000ed"><i>While users are free to use a thread pool as they wish, NTL can be enabled so</i></font><br>
+<font color="#0000ed"><i>that it *internally* uses a thread pool to speed up certain computations.&nbsp;&nbsp;This</i></font><br>
+<font color="#0000ed"><i>is currently a work in progress.&nbsp;&nbsp;To use this feature, NTL should be configured</i></font><br>
+<font color="#0000ed"><i>with NTL_THREAD_BOOST=on.&nbsp;&nbsp;The user can then initialize the (thread local)</i></font><br>
+<font color="#0000ed"><i>variable NTLThreadPool, either directly or via the convenience function</i></font><br>
+<font color="#0000ed"><i>SetNumThreads (see below).</i></font><br>
+<br>
+<font color="#0000ed"><i>NTL applications may use the NTLThreadPool themselves: the logic is designed so</i></font><br>
+<font color="#0000ed"><i>that if this pool is already activated when entering a thread-boosted routine,</i></font><br>
+<font color="#0000ed"><i>the thread-boosting is temporarily disabled.&nbsp;&nbsp;This means that an application</i></font><br>
+<font color="#0000ed"><i>can seamlessly use higer-level parallization when possible (which is usually</i></font><br>
+<font color="#0000ed"><i>more effective) or rely on NTL's internal parallelization at a lower leve.</i></font><br>
+<br>
+<br>
+<font color="#0000ed"><i>**************************************************************************</i></font><font color="#0000ed"><i>*/</i></font><br>
+<br>
+<br>
+<font color="#008b00"><b>class</b></font>&nbsp;BasicThreadPool {<br>
+<font color="#b02f60"><b>private</b></font>:<br>
+<br>
+&nbsp;&nbsp;BasicThreadPool(<font color="#008b00"><b>const</b></font>&nbsp;BasicThreadPool&amp;); <font color="#0000ed"><i>// disabled</i></font><br>
+&nbsp;&nbsp;<font color="#008b00"><b>void</b></font>&nbsp;<font color="#b02f60"><b>operator</b></font>=(<font color="#008b00"><b>const</b></font>&nbsp;BasicThreadPool&amp;); <font color="#0000ed"><i>// disabled</i></font><br>
+<br>
+<font color="#b02f60"><b>public</b></font>:<br>
+<br>
+&nbsp;&nbsp;BasicThreadPool(<font color="#008b00"><b>long</b></font>&nbsp;nthreads);<br>
+&nbsp;&nbsp;<font color="#0000ed"><i>// creates a pool with nthreads threads, including the current thread</i></font><br>
+&nbsp;&nbsp;<font color="#0000ed"><i>// (so nthreads-1 other threads get created)</i></font><br>
+<br>
+&nbsp;&nbsp;<font color="#008b00"><b>template</b></font>&lt;<font color="#008b00"><b>class</b></font>&nbsp;Fct&gt;<br>
+&nbsp;&nbsp;<font color="#008b00"><b>void</b></font>&nbsp;exec_index(<font color="#008b00"><b>long</b></font>&nbsp;cnt, Fct fct); <br>
+&nbsp;&nbsp;<font color="#0000ed"><i>// activate by index (see example usage above)</i></font><br>
+<br>
+&nbsp;&nbsp;<font color="#008b00"><b>template</b></font>&lt;<font color="#008b00"><b>class</b></font>&nbsp;Fct&gt;<br>
+&nbsp;&nbsp;<font color="#008b00"><b>void</b></font>&nbsp;exec_range(<font color="#008b00"><b>long</b></font>&nbsp;sz, Fct fct); <br>
+&nbsp;&nbsp;<font color="#0000ed"><i>// activate by range (see example usage above)</i></font><br>
+<br>
+&nbsp;&nbsp;<font color="#008b00"><b>long</b></font>&nbsp;SplitProblems(<font color="#008b00"><b>long</b></font>&nbsp;nproblems, Vec&lt;<font color="#008b00"><b>long</b></font>&gt;&amp; pvec) <font color="#008b00"><b>const</b></font>;<br>
+&nbsp;&nbsp;<font color="#0000ed"><i>// splits nproblems problems among (at most) nthreads threads.</i></font><br>
+&nbsp;&nbsp;<font color="#0000ed"><i>// returns the actual number of threads nt to be used, and </i></font><br>
+&nbsp;&nbsp;<font color="#0000ed"><i>// initializes pvec to have length nt+1, so that for t = 0..nt-1,</i></font><br>
+&nbsp;&nbsp;<font color="#0000ed"><i>// thread t processes subproblems pvec[t]..pvec[t+1]-1</i></font><br>
+<br>
+&nbsp;&nbsp;<font color="#008b00"><b>long</b></font>&nbsp;NumThreads() <font color="#008b00"><b>const</b></font>;<br>
+&nbsp;&nbsp;<font color="#0000ed"><i>// return number of threads (including current thread)</i></font><br>
+<br>
+&nbsp;&nbsp;<font color="#008b00"><b>bool</b></font>&nbsp;active() <font color="#008b00"><b>const</b></font>;<br>
+&nbsp;&nbsp;<font color="#0000ed"><i>// indicates an activation is in process</i></font><br>
+<br>
+&nbsp;&nbsp;<font color="#008b00"><b>void</b></font>&nbsp;add(<font color="#008b00"><b>long</b></font>&nbsp;n = <font color="#ff8b00">1</font>);<br>
+&nbsp;&nbsp;<font color="#0000ed"><i>// add n threads to the pool</i></font><br>
+<br>
+&nbsp;&nbsp;<font color="#008b00"><b>void</b></font>&nbsp;remove(<font color="#008b00"><b>long</b></font>&nbsp;n = <font color="#ff8b00">1</font>);<br>
+&nbsp;&nbsp;<font color="#0000ed"><i>// remove n threads from the pool</i></font><br>
+&nbsp;&nbsp;<br>
+&nbsp;&nbsp;<font color="#008b00"><b>void</b></font>&nbsp;move(BasicThreadPool&amp; other, <font color="#008b00"><b>long</b></font>&nbsp;n = <font color="#ff8b00">1</font>) <br>
+&nbsp;&nbsp;<font color="#0000ed"><i>// move n threads from other pool to this pool</i></font><br>
+<br>
+};<br>
+<br>
+<br>
+<br>
+<font color="#0000ed"><i>// THREAD BOOSTING FEATURES:</i></font><br>
+<br>
+<font color="#008b00"><b>extern</b></font>&nbsp;thread_local BasicThreadPool *NTLThreadPool;<br>
+<font color="#0000ed"><i>// pool used internally by NTL with NTL_THREAD_BOOST=on</i></font><br>
+<br>
+<font color="#008b00"><b>void</b></font>&nbsp;SetNumThreads(<font color="#008b00"><b>long</b></font>&nbsp;n);<br>
+<font color="#0000ed"><i>// convenience routine to set NTLThreadPool (created using new)</i></font><br>
+<font color="#0000ed"><i>// If NTL_THREADS=off, then this is still defined, but does nothing</i></font><br>
+<br>
+<br>
+<br>
+</font></body>
 </html>

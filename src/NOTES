@@ -1,4 +1,5 @@
 
+-----------------------------------------------------
 
 
 FIXME: maybe it would make more sense to take the +1/-1 logic
@@ -40,15 +41,7 @@ http://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
   make sure these changes are implemented in the template files 
   mfile and cfile, and then run:
 
-./configure --nowrite && cp mfileout def_makefile && cp cfileout ../include/NTL/def_config.h
-
-- run:  
-
-NOTE: try executing 
 export COPYFILE_DISABLE=1
-beforehand
-
-
 make ppdoc
 make ppclean
 make package

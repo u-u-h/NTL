@@ -718,6 +718,45 @@ extern long zz_pXArgBound;
 // and the power projection and minimal polynomial routines below, 
 // and indirectly affects many routines in zz_pXFactoring.
 
+
+// @anchor{compmod}
+
+/**************************************************************************\
+
+                     Faster Composition with Pre-Conditioning
+
+A new, experimental version of composition with preconditioning.
+This interface was introduced in NTL v9.6.3, and it should be 
+considered a preliminary interface and suvject to change (although
+it is likely to not change very much).
+
+Usage:
+    zz_pX x, g, h;
+    zz_pXModulus F;
+    zz_pXArgument H;
+    build(H, h, F);
+    zz_pXAltArgument H1;
+    build(H1, H, F);  // this keeps a pointer to H, so H must remain alive
+    CompMod(x, g, H1, F);  // x = g(h) mod f
+
+The idea is that H1 stores the data in H in an alternative format
+that allows for a more cache-friendly and more efficient execution
+of CompMod.  Depending on a variety of factors, this can be up to 
+about 3x faster than the redgular CompMod.
+
+
+\**************************************************************************/
+
+class  zz_pXAltArgument { 
+ // ...
+};
+
+void build(zz_pXAltArgument& altH, const zz_pXArgument& H, const zz_pXModulus& F);
+void CompMod(zz_pX& x, const zz_pX& g, const zz_pXAltArgument& A, 
+             const zz_pXModulus& F);
+
+
+
 /**************************************************************************\
 
                      power projection routines

@@ -1005,8 +1005,125 @@ long rem(long a, long n, sp_reduce_struct red)
 #endif
 
 
+#ifdef NTL_HAVE_LL_TYPE
+
+#define NTL_HAVE_SP_LL_ROUTINES
 
 
+// some routines that are currently not part of the documented
+// interface.  They currently are only defined when we have appropriate
+// LL type.
+
+
+struct sp_ll_reduce_struct {
+   unsigned long inv;
+   long nbits;
+
+   sp_ll_reduce_struct() { }
+
+   sp_ll_reduce_struct(unsigned long _inv, long _nbits) : inv(_inv), nbits(_nbits) { }
+
+};
+
+
+static inline sp_ll_reduce_struct
+make_sp_ll_reduce_struct(long n)
+{
+   long nbits = NTL_BITS_PER_LONG - sp_CountLeadingZeros(n);
+   unsigned long inv =
+       (unsigned long) ( ((((NTL_ULL_TYPE) 1) << (nbits+NTL_BITS_PER_LONG))-1UL) / ((NTL_ULL_TYPE) n) );
+
+   return sp_ll_reduce_struct(inv, nbits);
+}
+
+
+// computes remainder (hi, lo) mod d, assumes hi < d
+static inline long  
+sp_ll_red_21(unsigned long hi, unsigned long lo, long d, 
+            sp_ll_reduce_struct dinv)
+{
+   unsigned long H = 
+      (hi << (NTL_BITS_PER_LONG-dinv.nbits)) | (lo >> dinv.nbits);
+   unsigned long Q = MulHiUL(H, dinv.inv) + H;
+   unsigned long rr = lo - Q*cast_unsigned(d); // rr in [0..4*d)
+   long r = sp_CorrectExcess(rr, 2*d); // r in [0..2*d)
+   r = sp_CorrectExcess(r, d);
+   return r;
+}
+
+// computes remainder (x[n-1], ..., x[0]) mod d
+static inline long 
+sp_ll_red_n1(const unsigned long *x, long n, long d, sp_ll_reduce_struct dinv)
+{
+   long carry = 0;
+   long i;
+   for (i = n-1; i >= 0; i--) 
+      carry = sp_ll_red_21(carry, x[i], d, dinv);
+   return carry;
+} 
+
+// computes remainder (x2, x1, x0) mod d, assumes x2 < d
+static inline long 
+sp_ll_red_31(unsigned long x2, unsigned long x1, unsigned long x0,
+           long d, sp_ll_reduce_struct dinv)
+{
+   long carry = sp_ll_red_21(x2, x1, d, dinv);
+   return sp_ll_red_21(carry, x0, d, dinv);
+}
+
+
+// normalized versions of the above: assume NumBits(d) == NTL_SP_NBITS
+
+// computes remainder (hi, lo) mod d, assumes hi < d
+static inline long  
+sp_ll_red_21_normalized(unsigned long hi, unsigned long lo, long d, 
+            sp_ll_reduce_struct dinv)
+{
+   unsigned long H = 
+      (hi << (NTL_BITS_PER_LONG-NTL_SP_NBITS)) | (lo >> NTL_SP_NBITS);
+   unsigned long Q = MulHiUL(H, dinv.inv) + H;
+   unsigned long rr = lo - Q*cast_unsigned(d); // rr in [0..4*d)
+   long r = sp_CorrectExcess(rr, 2*d); // r in [0..2*d)
+   r = sp_CorrectExcess(r, d);
+   return r;
+}
+
+// computes remainder (x[n-1], ..., x[0]) mod d
+static inline long 
+sp_ll_red_n1_normalized(const unsigned long *x, long n, long d, sp_ll_reduce_struct dinv)
+{
+   long carry = 0;
+   long i;
+   for (i = n-1; i >= 0; i--) 
+      carry = sp_ll_red_21_normalized(carry, x[i], d, dinv);
+   return carry;
+} 
+
+// computes remainder (x2, x1, x0) mod d, assumes x2 < d
+static inline long 
+sp_ll_red_31_normalized(unsigned long x2, unsigned long x1, unsigned long x0,
+           long d, sp_ll_reduce_struct dinv)
+{
+   long carry = sp_ll_red_21_normalized(x2, x1, d, dinv);
+   return sp_ll_red_21_normalized(carry, x0, d, dinv);
+}
+
+
+#else
+
+// provided to streamline some code
+
+
+struct sp_ll_reduce_struct { };
+
+
+static inline sp_ll_reduce_struct
+make_sp_ll_reduce_struct(long n)
+{
+   return sp_ll_reduce_struct();
+}
+
+#endif
 
 
 NTL_CLOSE_NNS

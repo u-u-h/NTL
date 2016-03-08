@@ -28,5 +28,7 @@ done
 cp ../include/NTL/def_config.h unix/include/NTL/config.h
 cp ../include/NTL/have_LL_no.h unix/include/NTL/have_LL.h
 cp ../include/NTL/have_builtin_clzl_no.h unix/include/NTL/have_builtin_clzl.h
+cp ../include/NTL/have_avx_no.h unix/include/NTL/have_avx.h
+cp ../include/NTL/have_fma_no.h unix/include/NTL/have_fma.h
 
 cp def_makefile unix/src/makefile

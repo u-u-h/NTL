@@ -47,33 +47,45 @@ void touch_size_t(size_t* x);
 void touch_double(double* x);
 void touch_ldouble(long double* x);
 
+double sum_double(double *x, long n);
+
+double fma_test(double a, double b, double c);
 
 
+double power2(long k);
 
-double power2(long k)
+
+long FMADetected(long dp)
 {
-   long i;
-   double res;
+   double x = power2(0) + power2(dp-1);
+   double y = power2(0) + power2(dp-1);
 
-   res = 1;
+   touch_double(&x);
+   touch_double(&y);
 
-   for (i = 1; i <= k; i++)
-      res = res * 2;
+   double z = x*y;
+   touch_double(&z);
+   z = -z;
+   touch_double(&z);
 
-   return res;
+   double lo = fma_test(x, y, z);
+   return lo != 0;
 }
-
 
 long DoubleRounding(long dp)
 {
    double a = power2(dp-1) + 1;
    double b = (power2(dp)-1)/power2(dp+1);
-   register double x = a + b;
-   double y = x;
 
-   touch_double(&y);
+   double vec[2];
+   vec[0] = a;
+   vec[1] = b;
 
-   if (y != power2(dp-1) + 1)
+   double sum = sum_double(vec, 2);
+
+   touch_double(&sum);
+
+   if (sum != a)
       return 1;
    else 
       return 0; 
@@ -98,28 +110,6 @@ long DoublePrecision()
       eps *= 1.0/2.0;
       tmp = 1.0 + eps;
       touch_double(&tmp);
-      res = tmp - one;
-   } while (res == eps);
-
-   return k;
-}
-
-long DoublePrecision1()
-{
-   double eps, one, res;
-   long k;
-
-   one = val_double(1.0);
-   eps = val_double(1.0);
-
-   k = 0;
-
-   do {
-      register double tmp;
-
-      k++;
-      eps *= 1.0/2.0;
-      tmp = 1.0 + eps;
       res = tmp - one;
    } while (res == eps);
 
@@ -764,7 +754,8 @@ const char *yn_vec[2] = { "no", "yes" };
 int main()
 {
    long bpl, bpi, bpt, rs_arith, nbits, wnbits;
-   long dp, dp1, dr;
+   long dp, dr;
+   long fma_detected;
    long ldp;
    FILE *f;
    long warnings = 0;
@@ -1003,14 +994,19 @@ int main()
     * This test almost always yields the correct result --- if not,
     * you will have to set the NTL_EXT_DOUBLE in "mach_desc.h"
     * by hand.
-    * 
-    * The test effectively proves that in-register doubles are wide
-    * if dp1 > dp || dr.
     */
 
 
-   dp1 = DoublePrecision1();
    dr = DoubleRounding(dp);
+
+
+   /* 
+    * Next, we check if the platform uses FMA (fused multiply add),
+    * even across statement boundaries.
+    */ 
+
+   fma_detected = FMADetected(dp);
+
 
 
    /* 
@@ -1077,10 +1073,10 @@ int main()
    fprintf(stderr, "long double precision = %ld\n", ldp);
    fprintf(stderr, "NBITS (maximum) = %ld\n", nbits);
    fprintf(stderr, "WNBITS (maximum) = %ld\n", wnbits);
-   fprintf(stderr, "register double precision = %ld\n", dp1);
    fprintf(stderr, "double rounding detected = %s\n", yn_vec[dr]);  
+   fprintf(stderr, "FMA detected = %s\n", yn_vec[fma_detected]);  
 
-   if (((dp1 > dp) || dr) && GNUC_INTEL)
+   if (dr && GNUC_INTEL)
       fprintf(stderr, "-- auto x86 fix\n");
 
    if (dp != 53) {
@@ -1104,7 +1100,7 @@ int main()
 
 #endif
 
-   if (((dp1 > dp) || dr) && !GNUC_INTEL) {
+   if (dr && !GNUC_INTEL) {
       warnings = 1;
       fprintf(stderr, "\n\nWARNING:\n\n");
       fprintf(stderr, "This platform has extended double precision registers.\n");
@@ -1179,7 +1175,12 @@ int main()
    fprintf(f, "#define NTL_QUAD_FLOAT_SPLIT (");
    print2k(f, dp - (dp/2), bpl);
    fprintf(f, "+1.0)\n");
-   fprintf(f, "#define NTL_EXT_DOUBLE (%d)\n", ((dp1 > dp) || dr));
+   fprintf(f, "#define NTL_EXT_DOUBLE (%ld)\n", dr);
+
+   fprintf(f, "#define NTL_FMA_DETECTED (%ld)\n", fma_detected);
+
+
+
    print_BB_mul_code(f, bpl);
    print_BB_sqr_code(f, bpl);
    print_BB_rev_code(f, bpl);

@@ -26,11 +26,14 @@ NTL_THREAD_LOCAL volatile double *_ntl_IsFinite__ptr1 = &_ntl_IsFinite__local;
 NTL_THREAD_LOCAL volatile double *_ntl_IsFinite__ptr2 = &_ntl_IsFinite__local;
 NTL_THREAD_LOCAL volatile double *_ntl_IsFinite__ptr3 = &_ntl_IsFinite__local;
 NTL_THREAD_LOCAL volatile double *_ntl_IsFinite__ptr4 = &_ntl_IsFinite__local;
+NTL_THREAD_LOCAL volatile double *_ntl_IsFinite__ptr5 = &_ntl_IsFinite__local;
+NTL_THREAD_LOCAL volatile double *_ntl_IsFinite__ptr6 = &_ntl_IsFinite__local;
 
 long _ntl_IsFinite(double *p)
 {
    *_ntl_IsFinite__ptr1 = *p;
-   *_ntl_IsFinite__ptr3 = (*_ntl_IsFinite__ptr2 - *p);
+   *p = *_ntl_IsFinite__ptr5;
+   *_ntl_IsFinite__ptr3 = (*_ntl_IsFinite__ptr2 - *_ntl_IsFinite__ptr6);
    if (*_ntl_IsFinite__ptr4 != 0.0) return 0;
    return 1;
 }

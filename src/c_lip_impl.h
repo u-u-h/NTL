@@ -2104,6 +2104,7 @@ _ntl_zadd(_ntl_verylong a, _ntl_verylong b, _ntl_verylong *cc)
       /* signs a and b are different...use _ntl_zsub */
 
       if (anegative) {
+         // UNSAFE
          // FIXME: this is too ugly
          a[0] = -sa;
          NTL_SCOPE(guard) { if (!a_alias) a[0] = sa; };
@@ -2114,6 +2115,7 @@ _ntl_zadd(_ntl_verylong a, _ntl_verylong b, _ntl_verylong *cc)
          guard.relax();
       }
       else {
+         // UNSAFE
          // FIXME: this is too ugly
          b[0] = -sb;
          NTL_SCOPE(guard) {  if (!b_alias) b[0] = sb; };
@@ -2240,6 +2242,7 @@ _ntl_zsub(_ntl_verylong a, _ntl_verylong b, _ntl_verylong *cc)
       /* signs of a and b are different...use _ntl_zadd */
 
       if (anegative) {
+         // UNSAFE
          // FIXME: this is too ugly
          a[0] = -sa;
          NTL_SCOPE(guard) { if (!a_alias) a[0] = sa; };
@@ -2253,6 +2256,7 @@ _ntl_zsub(_ntl_verylong a, _ntl_verylong b, _ntl_verylong *cc)
          c[0] = -c[0];
       }
       else {
+         // UNSAFE
          // FIXME: this is too ugly
          b[0] = -sb;
          NTL_SCOPE(guard) { if (!b_alias) b[0] = sb; };
@@ -2325,6 +2329,8 @@ _ntl_zsmul(_ntl_verylong a, long d, _ntl_verylong *bb)
 
    // EXCEPTIONS: delay assignment to a[0] until after memory allocation,
    // the remaining code is exception free
+
+   // UNSAFE
 
    a[0] = sa;
 
@@ -2617,6 +2623,8 @@ void kar_mul(long *c, long *a, long *b, long *stk)
          /* and subtract from T3 */
 
          {
+            // UNSAFE
+
             long olda, oldb;
 
             olda = a[hsa];  a[hsa] = sa-hsa;
@@ -2631,6 +2639,8 @@ void kar_mul(long *c, long *a, long *b, long *stk)
 
          /* recursively compute a_lo*b_lo into low part of c */
          /* and subtract from T3 */
+
+         // UNSAFE
 
          *a = hsa;
          *b = hsa;
@@ -2657,6 +2667,8 @@ void kar_mul(long *c, long *a, long *b, long *stk)
 
          /* recursively compute b*a_hi into high part of c */
          {
+            // UNSAFE
+
             long olda;
 
             olda = a[hsa];  a[hsa] = sa-hsa;
@@ -2665,6 +2677,8 @@ void kar_mul(long *c, long *a, long *b, long *stk)
          }
 
          /* recursively compute b*a_lo into T */
+
+         // UNSAFE
 
          *a = hsa;
          kar_mul(T, a, b, stk);
@@ -2736,10 +2750,14 @@ void kar_sq(long *c, long *a, long *stk)
       kar_fold(T1, a, hsa);
       kar_sq(T2, T1, stk);
 
+      // UNSAFE
+
       olda = a[hsa];  a[hsa] = sa - hsa;
       kar_sq(c + (hsa << 1), a + hsa, stk);
       kar_sub(T2, c + (hsa << 1));
       a[hsa] = olda;
+
+      // UNSAFE
 
       *a = hsa;
       kar_sq(c, a, stk);
@@ -2785,6 +2803,8 @@ void _ntl_zmul(_ntl_verylong a, _ntl_verylong b, _ntl_verylong *cc)
       }
 
 
+
+      // UNSAFE
 
       sa = *a;
       if (sa < 0) {
@@ -3019,6 +3039,9 @@ void _ntl_zsq(_ntl_verylong a, _ntl_verylong *cc)
       _ntl_zcopy(a, &mem);
       a = mem;
    }
+
+
+   // UNSAFE
 
    sa = *a;
 
@@ -3526,6 +3549,8 @@ void _ntl_zdiv(_ntl_verylong a, _ntl_verylong b, _ntl_verylong *qq, _ntl_verylon
       return;
    }
 
+   // UNSAFE
+
    sign = 0;
    if (sa < 0) {
       a[0] = sa = -sa;
@@ -3687,6 +3712,8 @@ _ntl_zmod(_ntl_verylong a, _ntl_verylong b, _ntl_verylong *rr)
       _ntl_zintoz(_ntl_zsmod(a, -b[1]), rr);
       return;
    }
+
+   // UNSAFE
 
    sign = 0;
    if (sa < 0) {
@@ -5467,6 +5494,7 @@ _ntl_zgcd(
                 return;
         }
 
+        // UNSAFE
 
         if (m1negative = (mm1[0] < 0))
                 mm1[0] = -mm1[0];

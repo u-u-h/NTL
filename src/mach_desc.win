@@ -16,8 +16,7 @@
 #define NTL_WIDE_DOUBLE_DP ((wide_double(1L<<52)))
 #define NTL_QUAD_FLOAT_SPLIT ((((double)(1L<<27)))+1.0)
 #define NTL_EXT_DOUBLE (0)
-
-
+#define NTL_FMA_DETECTED (1)
 
 
 

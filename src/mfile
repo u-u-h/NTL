@@ -199,8 +199,9 @@ IN17=$(IN16) vec_vec_lzz_pE.h vec_xdouble.h xdouble.h config.h version.h
 IN18=$(IN17) def_config.h new.h vec_ulong.h vec_vec_ulong.h c_lip.h g_lip.h
 IN19=$(IN18) SmartPtr.h Lazy.h LazyTable.h thread.h  BasicThreadPool.h
 IN20=$(IN19) have_LL_no.h have_LL_yes.h have_builtin_clzl_no.h have_builtin_clzl_yes.h
+IN21=$(IN20) have_avx_no.h have_avx_yes.h have_fma_no.h have_fma_yes.h
 
-INCL=$(IN20)
+INCL=$(IN21)
 
 
 
@@ -223,17 +224,19 @@ TS = $(TS4)
 
 # scripts
 
-SCRIPTS1=MakeGetTime MakeGetPID MakeCheckCLZL MakeCheckLL TestScript dosify unixify RemoveProg 
+SCRIPTS1=MakeGetTime MakeGetPID MakeCheckCLZL MakeCheckLL MakeCheckAVX MakeCheckFMA TestScript dosify unixify RemoveProg 
 SCRIPTS2=$(SCRIPTS1) configure DoConfig mfile cfile ppscript
 
 SCRIPTS=$(SCRIPTS2)
 
 # auxilliary source
 
-MD=MakeDesc.c MakeDescAux.c newnames.c gen_gmp_aux.c CheckPCLMUL.c
+MD=MakeDesc.c MakeDescAux.c newnames.c gen_gmp_aux.c 
 GT=GetTime0.c GetTime1.c GetTime2.c GetTime3.c GetTime4.c GetTime5.c TestGetTime.c
 GP=GetPID1.c GetPID2.c TestGetPID.c
-CH=CheckCLZL.c CheckCLZLAux.c CheckLL.c CheckLLAux.c
+CH=CheckCLZL.c CheckCLZLAux.c CheckLL.c CheckLLAux.c CheckAVX.c CheckFMA.c CheckCompile.c
+
+AUXPROGS = TestGetTime TestGetPID CheckCLZL CheckLL CheckAVX CheckFMA
 
 
 
@@ -349,6 +352,8 @@ setup2:
 	sh MakeGetPID  "$(LINK)" "$(LDLIBS)"
 	sh MakeCheckCLZL "$(LINK)" "$(LDLIBS)"
 	sh MakeCheckLL   "$(LINK)" "$(LDLIBS)"
+	sh MakeCheckAVX   "$(LINK)" "$(LDLIBS)"
+	sh MakeCheckFMA   "$(LINK)" "$(LDLIBS)"
 
 # setup3 generates the file ../include/NTL/gmp_aux.h
 # The file ../include/NTL/gmp_aux.h is included in ../include/NTL/lip.h
@@ -386,8 +391,9 @@ GetTime.o: GetTime.c
 GetPID.o: GetPID.c 
 	$(LCOMP) $(COMPILE) GetPID.c
 
-CheckPCLMUL: CheckPCLMUL.c
-	$(LINK) -o  CheckPCLMUL CheckPCLMUL.c $(LDLIBS)
+CheckCompile: CheckCompile.c
+	$(LINK) -o  CheckCompile CheckCompile.c $(LDLIBS)
+
 
 .c.o: 
 	$(LCOMP) $(COMPILE) $(GF2X_OPT_INCDIR) $<
@@ -466,8 +472,10 @@ clobber:
 	rm -f ntl.a mach_desc.h ../include/NTL/mach_desc.h  GetTime.c GetPID.c
 	cp ../include/NTL/have_LL_no.h ../include/NTL/have_LL.h
 	cp ../include/NTL/have_builtin_clzl_no.h ../include/NTL/have_builtin_clzl.h
+	cp ../include/NTL/have_avx_no.h ../include/NTL/have_avx.h
+	cp ../include/NTL/have_fma_no.h ../include/NTL/have_fma.h
 	rm -f ../include/NTL/gmp_aux.h
-	sh RemoveProg $(PROGS) MakeDesc TestGetTime TestGetPID gen_gmp_aux
+	sh RemoveProg $(PROGS) MakeDesc $(AUXPROGS) gen_gmp_aux
 	rm -f *.o
 	rm -rf small
 	rm -f cfileout mfileout
@@ -475,7 +483,7 @@ clobber:
 	rm -f all
 
 clean:
-	sh RemoveProg MakeDesc TestGetTime TestGetPID gen_gmp_aux
+	sh RemoveProg $(PROGS) MakeDesc $(AUXPROGS) gen_gmp_aux
 	rm -f *.o 
 	rm -rf small
 @{LSHAR}	- $(LIBTOOL) --mode=clean rm -f libntl.la *.lo #LSHAR
@@ -501,6 +509,9 @@ ppclean:
 
 
 package:
+	./configure --nowrite
+	cp mfileout def_makefile
+	cp cfileout ../include/NTL/def_config.h
 	sh unixify "$(SFILES) DIRNAME WINDIR VERSION_INFO NOTES" "$(INCL)" "$(DOC)" 
 	rm -rf `cat DIRNAME`
 	rm -f `cat DIRNAME`.tar
@@ -512,6 +523,9 @@ package:
 	rm -rf `cat DIRNAME`
 
 winpack:
+	./configure --nowrite NTL_GMP_LIP=off
+	cp mfileout def_makefile
+	cp cfileout ../include/NTL/def_config.h
 	sh dosify "$(SRC)" "$(INCL)" "$(DOC)" "$(TS)" "$(TD)" "$(SINC)"
 	rm -rf `cat WINDIR`
 	rm -f `cat WINDIR`.zip 

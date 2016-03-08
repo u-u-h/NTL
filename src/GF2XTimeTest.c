@@ -53,6 +53,10 @@ printf("NTL_GF2X_ALTCODE1 ");
 printf("NTL_GF2X_NOINLINE ");
 #endif
 
+#ifdef NTL_PCLMUL
+printf("NTL_PCLMUL ");
+#endif
+
 
 printf("\n");
 

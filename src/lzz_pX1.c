@@ -1,8 +1,11 @@
 
-
 #include <NTL/lzz_pX.h>
-
 #include <NTL/new.h>
+
+#ifdef NTL_HAVE_AVX
+#include <immintrin.h>
+#endif
+
 
 NTL_START_IMPL
 
@@ -1066,6 +1069,611 @@ void Comp3Mod(zz_pX& x1, zz_pX& x2, zz_pX& x3,
    x2 = xx2;
    x3 = xx3;
 }
+
+
+// BEGIN zz_pXAltArgument variation 
+
+
+
+
+void build(zz_pXAltArgument& altH, const zz_pXArgument& H, const zz_pXModulus& F)
+{
+   altH.orig = &H;
+
+   if (H.H.length() < 10 || F.n < 50) { altH.strategy = 0; return; }
+
+#ifdef NTL_HAVE_LL_TYPE
+   altH.mem.kill();
+   altH.row.kill();
+   altH.dmem.kill();
+   altH.drow.kill();
+
+   altH.n = F.n;
+   altH.m = H.H.length()-1;
+
+   long p = zz_p::modulus();
+   long n = altH.n;
+   long m = altH.m;
+
+
+#ifdef NTL_HAVE_AVX
+   if (n >= 128 && m <= ((1L << NTL_DOUBLE_PRECISION)-1)/(p-1) &&
+      m*(p-1) <= ((1L << NTL_DOUBLE_PRECISION)-1)/(p-1)) {
+         altH.strategy = 3;
+         altH.pinv_L = sp_PrepRem(p);
+   }
+   else
+#endif
+   if (cast_unsigned(m) <= (~(0UL))/cast_unsigned(p-1) &&
+       cast_unsigned(m)*cast_unsigned(p-1) <= (~(0UL))/cast_unsigned(p-1)) {
+      altH.strategy = 1;
+      altH.pinv_L = sp_PrepRem(p);
+   }
+   else {
+      altH.strategy = 2;
+      altH.pinv_LL = make_sp_ll_reduce_struct(p);
+   }
+
+
+   if (altH.strategy == 1 || altH.strategy == 2) {
+
+      altH.row.SetLength(n);
+      long **row = altH.row.elts();
+      
+      const long  AllocAmt = 1L << 18;
+   
+      long BlockSize = (AllocAmt + m - 1)/m;
+      long NumBlocks = (n + BlockSize - 1)/BlockSize;
+   
+      altH.mem.SetLength(NumBlocks);
+   
+      for (long i = 0; i < NumBlocks; i++) {
+         long first = i*BlockSize;
+         long last =  min(n, first + BlockSize);
+         altH.mem[i].SetLength((last-first)*m);
+         for (long j = first; j < last; j++) {
+            row[j] = altH.mem[i].elts() + (j-first)*m;
+         }
+      }
+   
+      for (long i = 0; i < m; i++) {
+         const zz_p* ptr = H.H[i].rep.elts();
+         long len = H.H[i].rep.length();
+         for (long j = 0; j < len; j++) 
+            row[j][i] = rep(ptr[j]);
+         for (long j = len; j < n; j++)
+            row[j][i] = 0;
+      }
+   }
+#ifdef NTL_HAVE_AVX
+   else {
+
+      // sanity check
+      if (m >= (1L << (NTL_BITS_PER_LONG-8))) ResourceError("zz_pXAltArgument: overflow");
+
+      long npanels = (n+15)/16;
+      long panel_size = 16*m;
+
+      const long AllocAmt = 1L << 18;
+
+      long BlockSize = (AllocAmt + panel_size - 1)/panel_size;
+      long NumBlocks = (npanels + BlockSize - 1)/BlockSize;
+
+      altH.dmem.SetLength(NumBlocks);
+      altH.drow.SetLength(npanels);
+      double **drow = altH.drow.elts();
+
+      for (long i = 0; i < NumBlocks; i++) {
+         long first = i*BlockSize;
+         long last = min(npanels, first + BlockSize);
+         altH.dmem[i].SetLength((last-first)*panel_size + 4);
+
+         double *ptr = altH.dmem[i].elts();
+         while ((((unsigned long) ptr) % 32UL) != 0) ptr++; // DIRT: alignment
+
+         for (long j = first; j < last; j++)
+            drow[j] = ptr + (j-first)*panel_size;
+      }
+
+      for (long i = 0; i < m; i++) {
+         const zz_p *ptr = H.H[i].rep.elts();
+         long len = H.H[i].rep.length();
+         for (long j = 0; j < len; j++)
+            drow[j/16][(i*16) + (j%16)] = rep(ptr[j]);
+         for (long j = len; j < npanels*16; j++) 
+            drow[j/16][(i*16) + (j%16)] = 0;
+      }
+   }
+
+#endif
+
+
+#endif
+}
+
+
+#ifdef NTL_HAVE_LL_TYPE
+
+#define NTL_CAST_ULL(x) ((NTL_ULL_TYPE) (x))
+#define NTL_MUL_ULL(x,y) (NTL_CAST_ULL(x)*NTL_CAST_ULL(y))
+
+
+// NOTE: the following code sequence will generate imulq 
+// instructions on x86_64 machines, which empirically is faster
+// than using the mulq instruction or even the mulxq instruction,
+// (tested on a Broadwell machine).
+
+static inline long 
+InnerProd_LL(const long *ap, const zz_p *bp, long n, long d, 
+          sp_ll_reduce_struct dinv)
+{
+   const long BLKSIZE = (1L << min(20, 2*(NTL_BITS_PER_LONG-NTL_SP_NBITS)));
+
+   unsigned long acc0 = 0;
+   NTL_ULL_TYPE acc21 = 0;
+
+   long i;
+   for (i = 0; i <= n-BLKSIZE; i += BLKSIZE, ap += BLKSIZE, bp += BLKSIZE) {
+      // sum ap[j]*rep(bp[j]) for j in [0..BLKSIZE)
+
+      NTL_ULL_TYPE sum = 0;
+      for (long j = 0; j < BLKSIZE; j += 4) {
+         sum += NTL_MUL_ULL(ap[j+0], rep(bp[j+0]));
+         sum += NTL_MUL_ULL(ap[j+1], rep(bp[j+1]));
+         sum += NTL_MUL_ULL(ap[j+2], rep(bp[j+2]));
+         sum += NTL_MUL_ULL(ap[j+3], rep(bp[j+3]));
+      }
+
+      sum += acc0; 
+      acc0 = sum;
+      acc21 += (unsigned long) (sum >> NTL_BITS_PER_LONG);
+   }
+
+   if (i < n) {
+      // sum ap[i]*rep(bp[j]) for j in [0..n-i)
+
+      NTL_ULL_TYPE sum = 0;
+      long j = 0;
+
+      for (; j <= n-i-4; j += 4) {
+         sum += NTL_MUL_ULL(ap[j+0], rep(bp[j+0]));
+         sum += NTL_MUL_ULL(ap[j+1], rep(bp[j+1]));
+         sum += NTL_MUL_ULL(ap[j+2], rep(bp[j+2]));
+         sum += NTL_MUL_ULL(ap[j+3], rep(bp[j+3]));
+      }
+
+      for (; j < n-i; j++)
+         sum += NTL_MUL_ULL(ap[j], rep(bp[j]));
+
+      sum += acc0; 
+      acc0 = sum;
+      acc21 += (unsigned long) (sum >> NTL_BITS_PER_LONG);
+   }
+
+   if (dinv.nbits == NTL_SP_NBITS) 
+      return sp_ll_red_31_normalized(acc21 >> NTL_BITS_PER_LONG, acc21, acc0, d, dinv);
+   else
+      return sp_ll_red_31(acc21 >> NTL_BITS_PER_LONG, acc21, acc0, d, dinv);
+}
+
+
+
+
+static inline long 
+InnerProd_L(const long *ap, const zz_p *bp, long n, long d, 
+          sp_reduce_struct dinv)
+{
+   unsigned long sum = 0;
+   long j = 0;
+
+   for (; j <= n-4; j += 4) {
+      sum += (ap[j+0]) * (rep(bp[j+0]));
+      sum += (ap[j+1]) * (rep(bp[j+1]));
+      sum += (ap[j+2]) * (rep(bp[j+2]));
+      sum += (ap[j+3]) * (rep(bp[j+3]));
+   }
+
+   for (; j < n; j++)
+      sum += (ap[j]) * (rep(bp[j]));
+
+   return rem(sum, d, dinv);
+}
+
+
+
+#ifdef NTL_HAVE_AVX
+static
+void mul16rowsD(double *x, const double *a, const double *b, long n)
+{
+   __m256d avec0, avec1, avec2, avec3;
+
+   __m256d acc0 = _mm256_setzero_pd();
+   __m256d acc1 = _mm256_setzero_pd();
+   __m256d acc2 = _mm256_setzero_pd();
+   __m256d acc3 = _mm256_setzero_pd();
+
+   __m256d bvec;
+
+   for (long i = 0; i < n; i++) {
+      bvec = _mm256_broadcast_sd(&b[i]); 
+
+      avec0 = _mm256_load_pd(a); a += 4;
+      avec1 = _mm256_load_pd(a); a += 4;
+      avec2 = _mm256_load_pd(a); a += 4;
+      avec3 = _mm256_load_pd(a); a += 4;
+
+#ifdef NTL_HAVE_FMA
+
+      acc0 = _mm256_fmadd_pd(avec0, bvec, acc0);
+      acc1 = _mm256_fmadd_pd(avec1, bvec, acc1);
+      acc2 = _mm256_fmadd_pd(avec2, bvec, acc2);
+      acc3 = _mm256_fmadd_pd(avec3, bvec, acc3);
+
+#else
+
+      acc0 = _mm256_add_pd(_mm256_mul_pd(avec0, bvec), acc0);
+      acc1 = _mm256_add_pd(_mm256_mul_pd(avec1, bvec), acc1);
+      acc2 = _mm256_add_pd(_mm256_mul_pd(avec2, bvec), acc2);
+      acc3 = _mm256_add_pd(_mm256_mul_pd(avec3, bvec), acc3);
+
+#endif
+
+   }
+
+   _mm256_store_pd(x + 0*4, acc0);
+   _mm256_store_pd(x + 1*4, acc1);
+   _mm256_store_pd(x + 2*4, acc2);
+   _mm256_store_pd(x + 3*4, acc3);
+}
+
+static
+void mul16rows2D(double *x, double *x_, const double *a, const double *b, const double *b_, long n)
+{
+   __m256d avec0, avec1, avec2, avec3;
+
+   __m256d acc0 = _mm256_setzero_pd();
+   __m256d acc1 = _mm256_setzero_pd();
+   __m256d acc2 = _mm256_setzero_pd();
+   __m256d acc3 = _mm256_setzero_pd();
+
+   __m256d acc0_ = _mm256_setzero_pd();
+   __m256d acc1_ = _mm256_setzero_pd();
+   __m256d acc2_ = _mm256_setzero_pd();
+   __m256d acc3_ = _mm256_setzero_pd();
+
+
+   __m256d bvec;
+   __m256d bvec_;
+
+   for (long i = 0; i < n; i++) {
+      bvec = _mm256_broadcast_sd(&b[i]); 
+      bvec_ = _mm256_broadcast_sd(&b_[i]); 
+
+      avec0 = _mm256_load_pd(a); a += 4;
+      avec1 = _mm256_load_pd(a); a += 4;
+      avec2 = _mm256_load_pd(a); a += 4;
+      avec3 = _mm256_load_pd(a); a += 4;
+
+#ifdef NTL_HAVE_FMA
+
+      acc0 = _mm256_fmadd_pd(avec0, bvec, acc0);
+      acc1 = _mm256_fmadd_pd(avec1, bvec, acc1);
+      acc2 = _mm256_fmadd_pd(avec2, bvec, acc2);
+      acc3 = _mm256_fmadd_pd(avec3, bvec, acc3);
+
+      acc0_ = _mm256_fmadd_pd(avec0, bvec_, acc0_);
+      acc1_ = _mm256_fmadd_pd(avec1, bvec_, acc1_);
+      acc2_ = _mm256_fmadd_pd(avec2, bvec_, acc2_);
+      acc3_ = _mm256_fmadd_pd(avec3, bvec_, acc3_);
+
+#else
+      acc0 = _mm256_add_pd(_mm256_mul_pd(avec0, bvec), acc0);
+      acc1 = _mm256_add_pd(_mm256_mul_pd(avec1, bvec), acc1);
+      acc2 = _mm256_add_pd(_mm256_mul_pd(avec2, bvec), acc2);
+      acc3 = _mm256_add_pd(_mm256_mul_pd(avec3, bvec), acc3);
+
+      acc0_ = _mm256_add_pd(_mm256_mul_pd(avec0, bvec_), acc0_);
+      acc1_ = _mm256_add_pd(_mm256_mul_pd(avec1, bvec_), acc1_);
+      acc2_ = _mm256_add_pd(_mm256_mul_pd(avec2, bvec_), acc2_);
+      acc3_ = _mm256_add_pd(_mm256_mul_pd(avec3, bvec_), acc3_);
+
+#endif
+
+   }
+
+   _mm256_store_pd(x + 0*4, acc0);
+   _mm256_store_pd(x + 1*4, acc1);
+   _mm256_store_pd(x + 2*4, acc2);
+   _mm256_store_pd(x + 3*4, acc3);
+
+   _mm256_store_pd(x_ + 0*4, acc0_);
+   _mm256_store_pd(x_ + 1*4, acc1_);
+   _mm256_store_pd(x_ + 2*4, acc2_);
+   _mm256_store_pd(x_ + 3*4, acc3_);
+}
+
+
+#endif
+
+
+
+static
+void InnerProduct_LL(zz_pX& x, const vec_zz_p& v, long low, long high, 
+                   const zz_pXAltArgument& H, long n)
+{
+   high = min(high, v.length()-1);
+   long len = high-low+1;
+   if (len <= 0) {
+      clear(x);
+      return;
+   }
+
+   x.rep.SetLength(n);
+   zz_p *xp = x.rep.elts();
+
+   long p = zz_p::modulus();
+   sp_ll_reduce_struct pinv = H.pinv_LL;
+
+   const zz_p *vp = v.elts() + low;
+
+   for (long i = 0; i < n; i++) 
+      xp[i].LoopHole() = InnerProd_LL(H.row[i], vp, len, p, pinv);
+
+   x.normalize();
+}
+
+static
+void CompMod_LL(zz_pX& x, const zz_pX& g, const zz_pXAltArgument& A, 
+             const zz_pXModulus& F)
+{
+   if (deg(g) <= 0) {
+      x = g;
+      return;
+   }
+
+
+   zz_pX s, t;
+
+   long m = A.m;
+   long l = ((g.rep.length()+m-1)/m) - 1;
+
+   zz_pXMultiplier M;
+   build(M, A.orig->H[m], F);
+
+   InnerProduct_LL(t, g.rep, l*m, l*m + m - 1, A, F.n);
+   for (long i = l-1; i >= 0; i--) {
+      InnerProduct_LL(s, g.rep, i*m, i*m + m - 1, A, F.n);
+      MulMod(t, t, M, F);
+      add(t, t, s);
+   }
+
+   x = t;
+}
+
+static
+void InnerProduct_L(zz_pX& x, const vec_zz_p& v, long low, long high, 
+                   const zz_pXAltArgument& H, long n)
+{
+   high = min(high, v.length()-1);
+   long len = high-low+1;
+   if (len <= 0) {
+      clear(x);
+      return;
+   }
+
+   x.rep.SetLength(n);
+   zz_p *xp = x.rep.elts();
+
+   long p = zz_p::modulus();
+   sp_reduce_struct pinv = H.pinv_L;
+
+
+   const zz_p *vp = v.elts() + low;
+
+   for (long i = 0; i < n; i++) 
+      xp[i].LoopHole() = InnerProd_L(H.row[i], vp, len, p, pinv);
+
+   x.normalize();
+}
+
+static
+void CompMod_L(zz_pX& x, const zz_pX& g, const zz_pXAltArgument& A, 
+             const zz_pXModulus& F)
+{
+   if (deg(g) <= 0) {
+      x = g;
+      return;
+   }
+
+
+   zz_pX s, t;
+
+   long m = A.m;
+   long l = ((g.rep.length()+m-1)/m) - 1;
+
+   zz_pXMultiplier M;
+   build(M, A.orig->H[m], F);
+
+   InnerProduct_L(t, g.rep, l*m, l*m + m - 1, A, F.n);
+   for (long i = l-1; i >= 0; i--) {
+      InnerProduct_L(s, g.rep, i*m, i*m + m - 1, A, F.n);
+      MulMod(t, t, M, F);
+      add(t, t, s);
+   }
+
+   x = t;
+}
+
+
+#ifdef NTL_HAVE_AVX
+
+static
+void InnerProduct_AVX(zz_pX& x, const Vec<double>& v, long low, long high, 
+                   const zz_pXAltArgument& H, long n)
+{
+   high = min(high, v.length()-1);
+   long len = high-low+1;
+   if (len <= 0) {
+      clear(x);
+      return;
+   }
+
+   x.rep.SetLength(n);
+   zz_p *xp = x.rep.elts();
+
+   long p = zz_p::modulus();
+   sp_reduce_struct pinv = H.pinv_L;
+
+
+   const double *vp = v.elts() + low;
+
+   double res_buf[20];
+   double *res = &res_buf[0];
+   while ((((unsigned long) res) % 32UL) != 0) res++; // DIRT: alignment
+
+   long npanels = H.drow.length();
+
+   for (long i = 0, first = 0; i < npanels; i++, first += 16)  {
+      mul16rowsD(res, H.drow[i], vp, len);
+      long last = min(n, first + 16);
+      for (long ii = first; ii < last; ii++)
+         xp[ii].LoopHole() = rem((unsigned long) (long) res[ii-first], p, pinv);
+   }
+
+   x.normalize();
+}
+
+static
+void InnerProduct2_AVX(zz_pX& x, zz_pX& x_, const Vec<double>& v, long low, long low_, long len,
+                       const zz_pXAltArgument& H, long n)
+{
+   x.rep.SetLength(n);
+   zz_p *xp = x.rep.elts();
+
+   x_.rep.SetLength(n);
+   zz_p *xp_ = x_.rep.elts();
+
+   long p = zz_p::modulus();
+   sp_reduce_struct pinv = H.pinv_L;
+
+
+   const double *vp = v.elts() + low;
+   const double *vp_ = v.elts() + low_;
+
+   double res_buf[20];
+   double *res = &res_buf[0];
+   while ((((unsigned long) res) % 32UL) != 0) res++; // DIRT: alignment
+
+   double res_buf_[20];
+   double *res_ = &res_buf_[0];
+   while ((((unsigned long) res_) % 32UL) != 0) res_++; // DIRT: alignment
+
+   long npanels = H.drow.length();
+
+   for (long i = 0, first = 0; i < npanels; i++, first += 16)  {
+      mul16rows2D(res, res_, H.drow[i], vp, vp_, len);
+      long last = min(n, first + 16);
+      for (long ii = first; ii < last; ii++) {
+         xp[ii].LoopHole() = rem((unsigned long) (long) res[ii-first], p, pinv);
+         xp_[ii].LoopHole() = rem((unsigned long) (long) res_[ii-first], p, pinv);
+      }
+   }
+
+   x.normalize();
+   x_.normalize();
+}
+
+static
+void CompMod_AVX(zz_pX& x, const zz_pX& g, const zz_pXAltArgument& A, 
+             const zz_pXModulus& F)
+{
+   if (deg(g) <= 0) {
+      x = g;
+      return;
+   }
+
+
+   zz_pX s, s_, t;
+
+   long m = A.m;
+   long l = ((g.rep.length()+m-1)/m) - 1;
+
+   zz_pXMultiplier M;
+   build(M, A.orig->H[m], F);
+
+   long len = g.rep.length();
+   Vec<double> gg;
+   gg.SetLength(len);
+   for (long i = 0; i < len; i++) gg[i] = rep(g.rep[i]);
+
+   InnerProduct_AVX(t, gg, l*m, l*m + m - 1, A, F.n);
+   long i = l-1;
+   for (; i >= 1; i -= 2) {
+      InnerProduct2_AVX(s, s_, gg, i*m, (i-1)*m, m, A, F.n);
+      MulMod(t, t, M, F);
+      add(t, t, s);
+      MulMod(t, t, M, F);
+      add(t, t, s_);
+   }
+
+   if (i >= 0) {
+      InnerProduct_AVX(s, gg, i*m, i*m + m - 1, A, F.n);
+      MulMod(t, t, M, F);
+      add(t, t, s);
+   }
+
+   x = t;
+}
+#endif
+
+
+
+#endif
+
+
+
+void CompMod(zz_pX& x, const zz_pX& g, const zz_pXAltArgument& A, 
+             const zz_pXModulus& F)
+{
+   if (!A.orig) LogicError("CompMod: uninitialized arg");
+
+#ifndef NTL_HAVE_LL_TYPE
+   CompMod(x, g, *A.orig, F);
+#else
+
+   switch (A.strategy) {
+   case 0: 
+      CompMod(x, g, *A.orig, F);
+      break;
+
+   case 1:
+      CompMod_L(x, g, A, F);
+      break;
+
+   case 2:
+      CompMod_LL(x, g, A, F);
+      break;
+
+#ifdef NTL_HAVE_AVX
+   case 3:
+      CompMod_AVX(x, g, A, F);
+      break;
+
+#endif
+
+   default:
+      LogicError("CompMod: bad strategy");
+   }
+#endif
+
+}
+
+
+
+// END zz_pXAltArgument variation 
+
+
+
 
 static void StripZeroes(vec_zz_p& x)
 {

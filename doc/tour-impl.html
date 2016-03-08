@@ -187,10 +187,8 @@ basic arithmetic operations on integers represented as doubles and conversions f
 to doubles produce <i>exact</i> results, provided the inputs and outputs
 are less than <tt>2^p</tt> in absolute value,
 <li>
-if <tt>y/2 &lt;= x &lt;= 2y</tt>, then <tt>x-y</tt> is computed exactly.
+assuming no overflow, <tt>x - long(x)</tt> produces an exact result.
 </ul>
-Also, NTL allows the compiler to compute <tt>z = x/y</tt> as 
-<tt>t = 1/y</tt>, <tt>z = t*x</tt>.
 
 <p>
 It is also generally assumed that the compiler does not
@@ -210,7 +208,7 @@ associative.
 Unfortunately, some compilers do not do this correctly,
 unless you tell them.
 With Intel's C compiler <tt>icc</tt>, for example,
-you should compile NTL with the flag <tt>-fp-model source</tt>
+you should compile NTL with the flag <tt>-fp-model strict</tt>
 to enforce strict adherence to floating point standards.
 Also, you should be wary of compiling using an optimization
 level higher than the default <tt>-O2</tt> --
@@ -247,6 +245,13 @@ rest of NTL should work fine.
 Hopefully, because of the newer SSE instructions, this whole strict/loose
 issue is a thing of the past.
 
+<p>
+Another problem is that some hardware (especially newer Intel chips)
+support fused multiply-add (FMA) instructions.
+Again, this is only a problem for <tt>quad_float</tt>, and some
+care is taken to detect the problem and to work around it.
+The rest of NTL will work fine.
+
 
 
 <p>
@@ -265,29 +270,7 @@ much more predictable and reliable if "infinity"
 and "not a number" are implemented correctly.
 
 
-<p>
-<h3>Implementing long integer arithmetic</h3>
-<p>
-There are two basic strategies for implementing long integer arithmetic.
 
-<p>
-The default strategy is implemented in the 
-<i>traditional long integer arithmetic package</i>.
-This package is derived from the LIP package originally developed by
-A. K. Lenstra, although it has evolved quite a bit within NTL.
-This package uses no assembly code and is very portable.
-
-<p>
-The alternative strategy is to use GMP in place of LIP.
-In this strategy, the representation of long integers is in a 
-form compatible with GMP.
-This strategy typically yields the best performance,
-but requires
-that GMP is installed on your platform.
-
-<p>
-<a href="tour-gmp.html">Go here</a> for more details on the use
-of GMP with NTL.
 
 <p>
 <h3>Algorithms</h3>

@@ -11,19 +11,24 @@ sub RemoveProg {
 
    unlink($name);  unlink("$name.exe");
 
+   return 1;
+
 }
 
-sub BadPCLMUL {
-   print "*\n*\nPCLMUL does not work on this system\n";
-   print "reconfiguring with NTL_PCLMUL=off...\n*\n*\n";
-   system("echo 'NTL_PCLMUL=off' > RETRY_CONFIG");
+sub BadNative {
+   print "*\n*\nNATIVE does not work on this system\n";
+   print "reconfiguring with NATIVE=off...\n*\n*\n";
+   system("echo 'NATIVE=off' > RETRY_CONFIG");
    exit 1;
 }
+
+
 
 %MakeFlag = (
 
 'WIZARD'  => 'on',
 'SHARED'  => 'off',
+'NATIVE'  => 'on'
 
 );
 
@@ -72,9 +77,8 @@ sub BadPCLMUL {
 'NTL_THREADS'           => 'off',
 'NTL_EXCEPTIONS'        => 'off',
 'NTL_THREAD_BOOST'      => 'off',
-'NTL_GMP_LIP'           => 'off',
+'NTL_GMP_LIP'           => 'on',
 'NTL_GF2X_LIB'          => 'off',
-'NTL_PCLMUL'            => 'off',
 'NTL_X86_FIX'           => 'off',
 'NTL_NO_X86_FIX'        => 'off',
 'NTL_AVOID_FLOAT'       => 'off',
@@ -89,6 +93,7 @@ sub BadPCLMUL {
 'NTL_GF2X_NOINLINE'     => 'off',
 'NTL_GF2X_ALTCODE'      => 'off',
 'NTL_GF2X_ALTCODE1'     => 'off',
+'NTL_PCLMUL'            => 'off',
 'NTL_NO_INIT_TRANS'     => 'off',
 'NTL_CLEAN_INT'         => 'off',
 'NTL_CLEAN_PTR'         => 'off',
@@ -175,12 +180,12 @@ if ($ConfigFlag{'NTL_EXCEPTIONS'} eq 'on' && $ConfigFlag{'NTL_THREADS'} eq 'off'
    $MakeVal{'CXXAUTOFLAGS'} = $MakeVal{'CXXAUTOFLAGS'} . ' -std=c++11';
 }
 
+# special processing for NATIVE: if set, add -march=native 
 
-# special processing for NTL_PCLMUL: if set, add -mpclmul to CXXAUTOFLAGS
-
-if ($ConfigFlag{'NTL_PCLMUL'} eq 'on' && !exists($Variable{'CXXAUTOFLAGS'})) {
-   $MakeVal{'CXXAUTOFLAGS'} = $MakeVal{'CXXAUTOFLAGS'} . ' -mpclmul';
+if ($MakeFlag{'NATIVE'} eq 'on' && !exists($Variable{'CXXAUTOFLAGS'})) {
+    $MakeVal{'CXXAUTOFLAGS'} = $MakeVal{'CXXAUTOFLAGS'} . ' -march=native';
 }
+
 
 
 # some special MakeVal values that are determined by SHARED
@@ -384,12 +389,13 @@ if ($nowrite == 0) {
    print("writing ../include/NTL/config.h\n");
    system("cp cfileout ../include/NTL/config.h");
 
-   if ($ConfigFlag{'NTL_PCLMUL'} eq 'on') {
-      print "*\n*\nNTL_PCLMUL=on => checking system compatibility...\n\n";
-      RemoveProg("CheckPCLMUL");
-      system("make CheckPCLMUL") and BadPCLMUL();
-      system("./CheckPCLMUL") and BadPCLMUL();
-      print "*\n*\nPCLMUL works on this system\n";
+   if ($MakeFlag{'NATIVE'} eq 'on')  {
+      print "*\n*\nNATIVE=on => checking system compatibility...\n\n";
+      RemoveProg("CheckCompile");
+      system("make CheckCompile") and BadNative();
+      system("./CheckCompile") and RemoveProg("CheckCompile") and BadNative();
+      RemoveProg("CheckCompile");
+      print "*\n*\nNATIVE works\n";
    }
 
 }

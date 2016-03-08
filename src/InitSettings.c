@@ -83,12 +83,6 @@ int main()
    cout << "NTL_GF2X_LIB=0\n";
 #endif
 
-#ifdef NTL_PCLMUL
-   cout << "NTL_PCLMUL=1\n";
-#else
-   cout << "NTL_PCLMUL=0\n";
-#endif
-
 #ifdef NTL_LONG_LONG_TYPE
    cout << "FLAG_LONG_LONG_TYPE=1\n";
    cout << "NTL_LONG_LONG_TYPE=" make_string(NTL_LONG_LONG_TYPE) "\n";

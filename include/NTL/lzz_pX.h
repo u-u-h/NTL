@@ -1109,6 +1109,42 @@ CompMod(const zz_pX& g, const zz_pXArgument& H, const zz_pXModulus& F)
 
 
 
+// experimental variant that yields a faster ModComp
+// Usage:
+//    zz_pXArgument H;
+//    build(H, h, F);
+//    zz_pXAltArgument H1;
+//    build(H1, H, F);  // this keeps a pointer to H, so H must remain alive
+//    CompMod(x, g, H1, F);  // x = g(h) mod f
+
+struct zz_pXAltArgument {
+
+   const zz_pXArgument *orig;
+   zz_pXAltArgument() : orig(0) {}
+
+#ifdef NTL_HAVE_LL_TYPE
+   long strategy;
+
+   long n, m;
+   Vec< Vec<long> > mem;
+   Vec<long*> row;
+
+   Vec< Vec<double> > dmem;
+   Vec<double*> drow;
+
+   sp_ll_reduce_struct pinv_LL;
+   sp_reduce_struct pinv_L;
+#endif
+};
+
+
+void build(zz_pXAltArgument& altH, const zz_pXArgument& H, const zz_pXModulus& F);
+void CompMod(zz_pX& x, const zz_pX& g, const zz_pXAltArgument& A, 
+             const zz_pXModulus& F);
+
+
+
+
 #ifndef NTL_TRANSITION
 
 void UpdateMap(vec_zz_p& x, const vec_zz_p& a,

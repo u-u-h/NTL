@@ -18,6 +18,55 @@ A Tour of NTL: Summary of Changes
 
 <p><hr><p>
 <h3>
+2016.01.26: Changes between NTL 9.6.2 and 9.6.3
+</h3>
+
+<ul>
+<li>
+Some changes to the installation procedure:
+<ul>
+<li>
+For the Unix distribution, <tt>NTL_GMP_LIP</tt> is now
+<i>on</i> by default, which means that by default, NTL will use
+GMP.
+<li>
+By default, the configuration script will attempt a
+"native'' build by passing <tt>-march=native</tt>
+as a compiler flag.
+Most modern compilers support this, but the configuration script will
+check to make sure.
+<li>
+The <tt>NTL_PCLMUL</tt> flag (which enables the use of
+Intel's PCLMUL instruction) is now automagically set by the
+Wizard script.
+<li>
+The build script automatically checks for availability of Intel
+<tt>AVX</tt> intrinsics, which may be used to better
+optimize certain code.
+</ul>
+<li>
+A new modular composition implemention for <tt>zz_pX</tt>.
+This makes modular composition up to 3x faster, depending 
+on several factors.
+<a href="lzz_pX.cpp.html#compmod">See here</a> for details.
+
+<li>
+Improved performance for polynomial factoring over <tt>zz_pX</tt>
+using <tt>CanZass</tt>,
+using the improved modular composition routine (above)
+and better choice of baby step / giant step parameters.
+This leads to a 1.1x to 1.8x speedup, depending on several factors.
+
+<li>
+Improved robustness of <tt>quad_float</tt> implementation:
+it should now work correctly on platforms that are too
+liberal in their use of FMA instructions.
+
+
+</ul>
+
+<p><hr><p>
+<h3>
 2015.11.13: Changes between NTL 9.6.1 and 9.6.2
 </h3>
 

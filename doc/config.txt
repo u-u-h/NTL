@@ -18,24 +18,25 @@ correct for your platform, you have to set an appropriate variable.
 ########### Here are the most important variables, and their default values.
 
 CXX=g++              # The C++ compiler
+
 CXXFLAGS=-g -O2      # C++ complilation flags
 
-DEF_PREFIX=/usr/local # Default software directory
+NATIVE=on            # compiles code targeted to current hardware
+
+DEF_PREFIX=/usr/local# Default software directory
+
 PREFIX=$(DEF_PREFIX) # Directory in which to install NTL library components
 SHARED=off           # Generate a shared library (as well as static)
 
 NTL_THREADS=off      # compile in thread-safe mode
 NTL_THREAD_BOOST=off # compile with thread boosting enabled
-NTL_EXCEPTIONS=off   # compile in thread-safe mode
+NTL_EXCEPTIONS=off   # compile in exception-safe mode
 
-NTL_GMP_LIP=off      # Switch to enable the use of GMP as primary 
+NTL_GMP_LIP=on       # Switch to enable the use of GMP as primary 
                      #   long integer package
 
 GMP_PREFIX=$(DEF_PREFIX) # Directory in which GMP components are installed
 
-NTL_PCLMUL=off       # switch to enable the PCLMUL instruction
-                     # on x86 machines for faster arithmetic over
-                     # GF(2)[X] (without relying on the gf2x package)
 
 NTL_GF2X_LIB=off     # Switch to enable the use of the gf2x package
                      #   for faster arithmetic over GF(2)[X]
@@ -58,12 +59,13 @@ CXX=g++
 
 CXXFLAGS=-g -O2
 
-# Flags for the C++ compiler
-# 
-# Note that if CXXFLAGS has not been explicitly set,
-# then the option -std=c++11 is added if either NTL_THREADS
-# or NTL_EXCEPTIONS is set, and the option -pthread is added
-# if NTL_THREADS is set.
+# Flags for the C++ compiler. 
+
+
+NATIVE=on
+
+# Flag to target code to current hardware.
+
 
 
 ########## Installation path:
@@ -139,17 +141,12 @@ NTL_EXCEPTIONS=off
 
 ########## GMP variables:
 
-NTL_GMP_LIP=off
+NTL_GMP_LIP=on
 
-# Set to 'on' if you want to use GMP, the GNU Multi-Precision package,
+# Set to 'off' if you don't want to use GMP, the GNU Multi-Precision package,
 # as the primary long integer package.
-# This will typically yield significantly faster long integer arithmetic 
-# compared to the traditional long integer package.
-
-# If you set this flag, please note the following.
-# If you have installed GMP in a standard "system" location, this is
-# all you have to do.  Otherwise, if GMP is built, but not installed
-# in a standard place, you have to set the variable GMP_PREFIX.
+# This will lead to significantly slower code, and is not 
+# recommended.
 
 
 GMP_PREFIX=$(DEF_PREFIX)
@@ -162,18 +159,6 @@ GMP_PREFIX=$(DEF_PREFIX)
 # and <gmp_prefix>/lib contains libgmp.a.  
 # For finer-grained control, set the variables GMP_INCDIR and GMP_LIBDIR 
 # instead (see below).
-
-######### PCLMUL accelerator:
-
-NTL_PCLMUL=off
-
-# set to 'on' if you want to enable the use of the PCLMUL
-# instruction on x86 machines. The configuration script
-# will adjust the makefile as well, and run a test program
-# to make sure it really works.
-#
-# This is an aletrnative to using the gf2x library (see below).
-# That library is currently not thread or exception safe.
 
 
 ########## GF2X variables:
@@ -220,16 +205,10 @@ GF2X_PREFIX=$(DEF_PREFIX)
 
 
 
-# If GMP is installed in a standard system directory, and you want to use it:
-
-   ./configure NTL_GMP_LIP=on
-
-
 
 # If GMP was installed in a non-standard directory, say,  $HOME/sw:
 
-   ./configure NTL_GMP_LIP=on GMP_PREFIX=$HOME/sw 
-
+   ./configure GMP_PREFIX=$HOME/sw 
 
 
 # If you want to use the options -g and -O for compiling C++,
@@ -240,15 +219,24 @@ GF2X_PREFIX=$(DEF_PREFIX)
 # Note the use of quotes to keep the argument in one piece.
 
 
-# If you want to use both GMP and the gf2x library:
+# If you want to use the gf2x library:
 
-   ./configure NTL_GMP_LIP=on NTL_GF2X_LIB=on
+   ./configure NTL_GF2X_LIB=on
 
 
-# If you want to use GMP as well as traditional (non-ISO) mode:
 
-   ./configure NTL_GMP_LIP=on NTL_STD_CXX=off
+########### 
+########### A little magic
+###########
 
+CXXAUTOFLAGS=
+
+# This is a variable that is automagically set by the configuration script.
+# These are C++ compiler flags that are selected depending on
+# the choice of other configuration options, and is geared towards gcc.
+# The configuration script always prints out the value it chooses.
+# If you explicitly set a value when invoking the configuration script,
+# then it will not change that value.
 
 
 
@@ -300,6 +288,7 @@ NTL_AVOID_BRANCHING=off
 NTL_GF2X_NOINLINE=off
 NTL_GF2X_ALTCODE=off
 NTL_GF2X_ALTCODE1=off
+NTL_PCLMUL=off
 
 GMP_INCDIR=$(GMP_PREFIX)/include
 GMP_LIBDIR=$(GMP_PREFIX)/lib
@@ -353,6 +342,7 @@ CPPFLAGS=
 LIBTOOL=libtool
 
 # the libtool command -- only needed if SHARED=on
+
 
 
 
@@ -621,6 +611,11 @@ NTL_GF2X_ALTCODE=off
 NTL_GF2X_ALTCODE1=off
 
 # Yet another alternative implementation for GF2X multiplication.
+
+NTL_PCLMUL=off 
+
+# switch to enable the PCLMUL instruction on x86 machines for faster arithmetic
+# over GF(2)[X] (without relying on the gf2x package)
 
 
 

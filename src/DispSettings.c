@@ -48,10 +48,6 @@ int main()
    cout << "NTL_GF2X_LIB\n";
 #endif
 
-#ifdef NTL_PCLMUL
-   cout << "NTL_PCLMUL\n";
-#endif
-
 #ifdef NTL_LONG_LONG_TYPE
    cout << "NTL_LONG_LONG_TYPE: ";
    cout << make_string(NTL_LONG_LONG_TYPE) << "\n";
@@ -177,6 +173,11 @@ cout << "Performance Options:\n";
 #ifdef NTL_GF2X_NOINLINE
    cout << "NTL_GF2X_NOINLINE\n";
 #endif
+
+#ifdef NTL_PCLMUL
+   cout << "NTL_PCLMUL\n";
+#endif
+
 
    cout << "\n\n";
 

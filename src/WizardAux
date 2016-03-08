@@ -91,6 +91,7 @@ system("make InitSettings");
 'NTL_GF2X_ALTCODE'     => 0,
 'NTL_GF2X_ALTCODE1'    => 0,
 'NTL_GF2X_NOINLINE'    => 0,
+'NTL_PCLMUL'           => 0,
 'NTL_FFT_BIGTAB'       => 0,
 'NTL_FFT_LAZYMUL'      => 0,
 
@@ -198,42 +199,49 @@ unlink("ZZ_pX.o"); unlink("ZZ_pX1.o");
 unlink("lip.o");   
 
 
-if ($Config{"NTL_PCLMUL"} == 0) {
 
-   # set the flags GF2X_NOINLINE and GF2X_ALTCODE...try all pairs
-   # bit don't bother with this if PCLMUL is enabled
 
-   $time = "999999999999999";
-   $aflag = "default";
-   $bflag = "default";
+# set flags NTL_GF2X_NOINLINE, NTL_GF2X_ALTCODE, NTL_GF2X_ALTCODE1
 
-   foreach $aflag1 ("default", "NTL_GF2X_NOINLINE") {
-      foreach $bflag1 ("default", "NTL_GF2X_ALTCODE", "NTL_GF2X_ALTCODE1") {
+$time = "999999999999999";
+$aflag = "default";
+$bflag = "default";
 
-         $Config{$aflag1} = 1;
-         $Config{$bflag1} = 1;
-         GenConfigHeader();
-         $time1 = RunProg("GF2XTimeTest");
+foreach $aflag1 ("default", "NTL_GF2X_NOINLINE") {
+   foreach $bflag1 ("default", "NTL_GF2X_ALTCODE", "NTL_GF2X_ALTCODE1") {
 
-         if ($time1 < $time) {
-            $aflag = $aflag1;
-            $bflag = $bflag1;
-            $time = $time1;
-         }
+      $Config{$aflag1} = 1;
+      $Config{$bflag1} = 1;
+      GenConfigHeader();
+      $time1 = RunProg("GF2XTimeTest");
 
-         $Config{$aflag1} = 0;
-         $Config{$bflag1} = 0;
-         unlink("GF2X.o");
+      if ($time1 < $time) {
+         $aflag = $aflag1;
+         $bflag = $bflag1;
+         $time = $time1;
       }
-   }
 
+      $Config{$aflag1} = 0;
+      $Config{$bflag1} = 0;
+      unlink("GF2X.o");
+   }
+}
+
+
+
+# now try NTL_PCLMUL instead
+unlink("GF2X.o");
+unlink("GF2X1.o");
+$Config{"NTL_PCLMUL"} = 1;
+GenConfigHeader();
+$time1 = RunProg("GF2XTimeTest");
+unlink("GF2X.o");
+unlink("GF2X1.o");
+if ($time1 >= $time) {
+   $Config{"NTL_PCLMUL"} = 0;
    $Config{$aflag} = 1;
    $Config{$bflag} = 1;
-
-
- }
-
-
+}
 
 if ($Config{"NTL_GMP_LIP"} == 0) {
 
